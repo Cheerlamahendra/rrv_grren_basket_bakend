@@ -1,0 +1,74 @@
+server:
+  port: 0
+
+spring:
+  application:
+    name: product-service
+  config:
+    import: ""
+  cloud:
+    config:
+      enabled: false
+      discovery:
+        enabled: false
+    discovery:
+      enabled: false
+  datasource:
+    url: jdbc:h2:mem:product_test_db;DB_CLOSE_DELAY=-1;MODE=MySQL;DATABASE_TO_LOWER=TRUE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ""
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    locations: classpath:db/migration
+
+eureka:
+  client:
+    enabled: false
+    register-with-eureka: false
+    fetch-registry: false
+
+aws:
+  s3:
+    provider: mock
+    region: ap-south-1
+    bucket-name: test-bucket
+    access-key-id: test-key
+    secret-access-key: test-secret
+    cloudfront-domain: https://cdn.test.com
+    presigned-url-expiration-minutes: 5
+    max-file-size-bytes: 5242880
+    allowed-content-types:
+      - image/jpeg
+      - image/jpg
+      - image/png
+      - image/webp
+
+app:
+  jwt:
+    secret: 404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
+    issuer: rrv-gateway
+  security:
+    internal-service-secret: c8f7e2d1a5b49382716054321fedcba9876543210abcdef0123456789abcdef0
+    internal-service-id: product-service
+    authorized-internal-services: api-gateway,auth-service,order-service,inventory-service
+  services:
+    auth-service-url: http://localhost:8081
+    inventory-service-url: http://localhost:8085
+    order-service-url: http://localhost:8082
+  s3:
+    deletion-outbox:
+      enabled: true
+      poll-interval-ms: 1000
+      batch-size: 50
+  inventory:
+    mock-default-available: true
+    mock-default-quantity-kg: 100.000

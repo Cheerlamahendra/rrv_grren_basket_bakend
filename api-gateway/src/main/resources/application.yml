@@ -1,0 +1,221 @@
+# ==============================================================================
+# RRV Green Basket — Reactive API Gateway Configuration
+# Owner: AVM Smart Solutions
+# ==============================================================================
+
+server:
+  port: 8080
+
+spring:
+  application:
+    name: api-gateway
+  config:
+    import: "optional:configserver:http://localhost:8888"
+  cloud:
+    config:
+      fail-fast: false
+    gateway:
+      discovery:
+        locator:
+          enabled: false
+          lower-case-service-id: true
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOriginPatterns:
+              - 'http://localhost:3000'
+              - 'http://localhost:*'
+              - '*'
+              - "http://192.168.0.153:3000"
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - PATCH
+              - OPTIONS
+            allowedHeaders: '*'
+            allowCredentials: true
+            maxAge: 3600
+      routes:
+        # 1. Auth Service Routes (Public & Authenticated)
+        - id: auth-service
+          uri: lb://AUTH-SERVICE
+          predicates:
+            - Path=/api/auth/**
+
+        # 2. Customer Service Routes
+        - id: customer-service
+          uri: lb://CUSTOMER-SERVICE
+          predicates:
+            - Path=/api/customers/**
+
+        # 2.5 Product Service Admin Routes
+        - id: product-service-admin
+          uri: lb://PRODUCT-SERVICE
+          predicates:
+            - Path=/api/admin/products/**
+
+        # 2.6 Inventory Service Admin Routes
+        - id: inventory-service-admin
+          uri: lb://INVENTORY-SERVICE
+          predicates:
+            - Path=/api/admin/inventory/**
+
+#        # 3. Admin Service Routes (Restricted)
+#        - id: admin-service
+#          uri: lb://ADMIN-SERVICE
+#          predicates:
+#            - Path=/api/admin/**
+#          filters:
+#            - name: RoleAuthorization
+#              args:
+#                requiredRoles: ROLE_SUPER_ADMIN,ROLE_ADMIN,ROLE_STORE_MANAGER
+
+        # 4. Product Service Routes (Catalog, Weight Variants, S3 Presigned URLs)
+        - id: product-service
+          uri: lb://PRODUCT-SERVICE
+          predicates:
+            - Path=/api/products/**
+
+        # 5. Inventory Service Routes (Stock Ledger & Locking)
+        - id: inventory-service
+          uri: lb://INVENTORY-SERVICE
+          predicates:
+            - Path=/api/inventory/**
+
+        # 6. Cart Service Routes
+        - id: cart-service
+          uri: lb://CART-SERVICE
+          predicates:
+            - Path=/api/cart/**
+
+        # 7. Promotion Service Routes (Coupons & Discounts)
+        - id: promotion-service
+          uri: lb://PROMOTION-SERVICE
+          predicates:
+            - Path=/api/promotions/**
+
+        # 8. Order Service Routes (Checkout Saga & History)
+        - id: order-service
+          uri: lb://ORDER-SERVICE
+          predicates:
+            - Path=/api/orders/**
+
+        # 9. Procurement Service Routes (Daily Mandi POs)
+        - id: procurement-service
+          uri: lb://PROCUREMENT-SERVICE
+          predicates:
+            - Path=/api/procurement/**
+
+        # 10. Packing Service Routes (Crate Packing & Weighing Discrepancy)
+        - id: packing-service
+          uri: lb://PACKING-SERVICE
+          predicates:
+            - Path=/api/packing/**
+
+        # 11. Delivery Service Routes (Dispatch & POD)
+        - id: delivery-service
+          uri: lb://DELIVERY-SERVICE
+          predicates:
+            - Path=/api/delivery/**
+
+        # 12. Payment Service Routes (Transactions & Webhooks)
+        - id: payment-service
+          uri: lb://PAYMENT-SERVICE
+          predicates:
+            - Path=/api/payments/**
+
+        # 13. Notification Service Routes (External Email API)
+        - id: notification-service
+          uri: lb://NOTIFICATION-SERVICE
+          predicates:
+            - Path=/api/notifications/**
+
+        # 14. Analytics Service Routes (Executive BI)
+        - id: analytics-service
+          uri: lb://ANALYTICS-SERVICE
+          predicates:
+            - Path=/api/analytics/**
+
+# ==============================================================================
+# Security & JWT Configuration
+# ==============================================================================
+app:
+  jwt:
+    secret: ${JWT_SECRET:404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
+    issuer: rrv-gateway
+    public-endpoints:
+      - /api/auth/customer/register/**
+      - /api/auth/customer/login/**
+      - /api/auth/customer/send-otp
+      - /api/auth/customer/verify-otp
+      - /api/auth/customer/register
+      - /api/auth/customer/login
+      - /api/auth/admin/login
+      - /api/auth/refresh
+      - /api/auth/customer/refresh
+      - /api/gateway/status
+      - /api/gateway/routes
+      - /fallback/**
+      - /actuator/**
+      - /v3/api-docs/**
+      - /swagger-ui/**
+      - /swagger-ui.html
+      - /webjars/**
+  security:
+    internal-service-secret: ${INTERNAL_SERVICE_SECRET:c8f7e2d1a5b49382716054321fedcba9876543210abcdef0123456789abcdef0}
+    internal-service-id: api-gateway
+  services:
+    auth-service-url: ${AUTH_SERVICE_URL:http://localhost:8081}
+
+# ==============================================================================
+# Eureka Discovery Client Configuration
+# ==============================================================================
+eureka:
+  instance:
+    prefer-ip-address: true
+    instance-id: ${spring.application.name}:${server.port}
+    lease-renewal-interval-in-seconds: 10
+    lease-expiration-duration-in-seconds: 30
+  client:
+    register-with-eureka: true
+    fetch-registry: true
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+
+# ==============================================================================
+# Actuator Configuration
+# ==============================================================================
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,gateway
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true
+    gateway:
+      enabled: true
+
+# ==============================================================================
+# SpringDoc OpenAPI Configuration (Reactive WebFlux)
+# ==============================================================================
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+    enabled: true
+  swagger-ui:
+    path: /swagger-ui.html
+    enabled: true
+
+# ==============================================================================
+# Logging Configuration
+# ==============================================================================
+logging:
+  level:
+    root: INFO
+    com.rrvgreenbasket.gateway: DEBUG
+    org.springframework.cloud.gateway: INFO

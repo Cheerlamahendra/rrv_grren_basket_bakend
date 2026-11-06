@@ -1,0 +1,210 @@
+{
+  "info": {
+    "_postman_id": "7b8d34e2-a5f1-4c92-bf31-29cf94e77221",
+    "name": "RRV Green Basket - API Gateway",
+    "description": "Postman API Collection for testing Spring Cloud API Gateway (Port 8080): Routing, Edge JWT Authentication Filter, RBAC Role Authorization Filter, CORS, and Status Endpoints.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. Gateway Health & Runtime Metrics",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "http://localhost:8080/api/gateway/status",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8080",
+          "path": [
+            "api",
+            "gateway",
+            "status"
+          ]
+        },
+        "description": "Retrieves the current runtime health, uptime, total active routes count, and JVM memory utilization of the API Gateway."
+      },
+      "response": []
+    },
+    {
+      "name": "2. List Active Gateway Routes",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "http://localhost:8080/api/gateway/routes",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8080",
+          "path": [
+            "api",
+            "gateway",
+            "routes"
+          ]
+        },
+        "description": "Lists all 14 microservice routes configured in Spring Cloud Gateway with their predicates and target load-balanced URIs."
+      },
+      "response": []
+    },
+    {
+      "name": "3. Edge Security - Missing JWT Token (Expect 401)",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "http://localhost:8080/api/customers/profile",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8080",
+          "path": [
+            "api",
+            "customers",
+            "profile"
+          ]
+        },
+        "description": "Verifies that the JwtAuthenticationFilter halts unauthenticated requests to protected endpoints (/api/customers/**) with HTTP 401 Unauthorized."
+      },
+      "response": []
+    },
+    {
+      "name": "4. Edge Security - Invalid JWT Token (Expect 401)",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer invalid.tampered.token"
+          }
+        ],
+        "url": {
+          "raw": "http://localhost:8080/api/customers/profile",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8080",
+          "path": [
+            "api",
+            "customers",
+            "profile"
+          ]
+        },
+        "description": "Verifies that an invalid/tampered JWT token is rejected by the Gateway HMAC-SHA validator with HTTP 401 Unauthorized."
+      },
+      "response": []
+    },
+    {
+      "name": "5. Public Route Bypass - No JWT Required (Success/Pass-through)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"testcustomer@example.com\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:8080/api/auth/customer/send-otp",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8080",
+          "path": [
+            "api",
+            "auth",
+            "customer",
+            "send-otp"
+          ]
+        },
+        "description": "Verifies that whitelisted public routes (/api/auth/**) bypass the JwtAuthenticationFilter without requiring an Authorization header."
+      },
+      "response": []
+    },
+    {
+      "name": "6. Actuator Health Probe",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "http://localhost:8080/actuator/health",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8080",
+          "path": [
+            "actuator",
+            "health"
+          ]
+        },
+        "description": "Liveness/Readiness probe returning status UP for container orchestration."
+      },
+      "response": []
+    },
+    {
+      "name": "7. OpenAPI Specification (v3)",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "http://localhost:8080/v3/api-docs",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8080",
+          "path": [
+            "v3",
+            "api-docs"
+          ]
+        },
+        "description": "OpenAPI v3 JSON specification describing the Gateway management endpoints."
+      },
+      "response": []
+    }
+  ]
+}

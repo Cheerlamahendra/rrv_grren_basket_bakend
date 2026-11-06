@@ -1,0 +1,75 @@
+# ==============================================================================
+# RRV Green Basket — Centralized Config Server Configuration
+# Owner: AVM Smart Solutions
+# ==============================================================================
+
+server:
+  port: 8888
+  servlet:
+    context-path: /
+
+spring:
+  application:
+    name: config-server
+  profiles:
+    active: native
+  cloud:
+    config:
+      server:
+        native:
+          # Search locations for centralized microservice configuration files
+          # Supports both classpath bundled configs and external ./config-repo folder
+          search-locations:
+            - classpath:/config-repo
+            - file:./config-repo
+            - file:../config-repo
+
+# ==============================================================================
+# Eureka Client Registration (Registers Config Server with Discovery Server)
+# ==============================================================================
+eureka:
+  instance:
+    prefer-ip-address: true
+    instance-id: ${spring.application.name}:${server.port}
+    lease-renewal-interval-in-seconds: 10
+    lease-expiration-duration-in-seconds: 30
+  client:
+    register-with-eureka: true
+    fetch-registry: true
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+
+# ==============================================================================
+# Spring Boot Actuator Configuration
+# ==============================================================================
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,env
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true
+
+# ==============================================================================
+# OpenAPI / Swagger UI Configuration
+# ==============================================================================
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+    enabled: true
+  swagger-ui:
+    path: /swagger-ui.html
+    enabled: true
+
+# ==============================================================================
+# Logging Configuration
+# ==============================================================================
+logging:
+  level:
+    root: INFO
+    com.rrvgreenbasket.config: DEBUG
+    org.springframework.cloud.config: INFO
+    com.netflix.discovery: WARN

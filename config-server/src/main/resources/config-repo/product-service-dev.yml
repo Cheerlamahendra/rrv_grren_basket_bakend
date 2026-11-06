@@ -1,0 +1,30 @@
+# ==============================================================================
+# Product Service — Development Profile Configuration (Including AWS S3)
+# ==============================================================================
+
+server:
+  port: 8084
+
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306/product_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+    username: ${MYSQL_USER:root}
+    password: ${MYSQL_PASSWORD:mahendra}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+# AWS S3 Image Storage Placeholders
+aws:
+  s3:
+    provider: ${STORAGE_PROVIDER:mock} # toggled between 'mock' and 'aws-s3'
+    region: ${AWS_REGION:ap-south-1}
+    bucket-name: ${AWS_S3_BUCKET:rrv-green-basket-assets}
+    access-key-id: ${AWS_ACCESS_KEY_ID:mock_access_key}
+    secret-access-key: ${AWS_SECRET_ACCESS_KEY:mock_secret_key}
+    cloudfront-domain: ${AWS_CLOUDFRONT_DOMAIN:https://cdn.rrvgreenbasket.com}
+    presigned-url-expiration-minutes: 5
+    max-file-size-bytes: 5242880 # 5 MB
+    allowed-content-types:
+      - image/jpeg
+      - image/jpg
+      - image/png
+      - image/webp

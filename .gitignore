@@ -1,0 +1,8 @@
+**/target/
+.idea/
+*.iml
+*.zip
+.env
+.env.*
+!.env.example
+*.log

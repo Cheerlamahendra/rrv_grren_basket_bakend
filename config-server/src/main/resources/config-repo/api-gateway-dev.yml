@@ -1,0 +1,115 @@
+# ==============================================================================
+# API Gateway — Development Profile Configuration
+# ==============================================================================
+
+server:
+  port: 8080
+
+spring:
+  cloud:
+    gateway:
+      discovery:
+        locator:
+          enabled: false
+          lower-case-service-id: true
+      corsConfigurations:
+        '[/**]':
+          allowedOriginPatterns: '*'
+          allowedMethods:
+            - GET
+            - POST
+            - PUT
+            - DELETE
+            - OPTIONS
+          allowedHeaders: '*'
+          allowCredentials: true
+      routes:
+        - id: auth-service
+          uri: lb://AUTH-SERVICE
+          predicates:
+            - Path=/api/auth/**
+
+        - id: customer-service
+          uri: lb://CUSTOMER-SERVICE
+          predicates:
+            - Path=/api/customers/**
+
+        - id: product-service-admin
+          uri: lb://PRODUCT-SERVICE
+          predicates:
+            - Path=/api/admin/products/**
+
+        - id: inventory-service-admin
+          uri: lb://INVENTORY-SERVICE
+          predicates:
+            - Path=/api/admin/inventory/**
+
+        - id: admin-service
+          uri: lb://ADMIN-SERVICE
+          predicates:
+            - Path=/api/admin/**
+
+        - id: product-service
+          uri: lb://PRODUCT-SERVICE
+          predicates:
+            - Path=/api/products/**
+
+        - id: inventory-service
+          uri: lb://INVENTORY-SERVICE
+          predicates:
+            - Path=/api/inventory/**
+
+        - id: cart-service
+          uri: lb://CART-SERVICE
+          predicates:
+            - Path=/api/cart/**
+
+        - id: promotion-service
+          uri: lb://PROMOTION-SERVICE
+          predicates:
+            - Path=/api/promotions/**
+
+        - id: order-service
+          uri: lb://ORDER-SERVICE
+          predicates:
+            - Path=/api/orders/**
+
+        - id: procurement-service
+          uri: lb://PROCUREMENT-SERVICE
+          predicates:
+            - Path=/api/procurement/**
+
+        - id: packing-service
+          uri: lb://PACKING-SERVICE
+          predicates:
+            - Path=/api/packing/**
+
+        - id: delivery-service
+          uri: lb://DELIVERY-SERVICE
+          predicates:
+            - Path=/api/delivery/**
+
+        - id: payment-service
+          uri: lb://PAYMENT-SERVICE
+          predicates:
+            - Path=/api/payments/**
+
+        - id: notification-service
+          uri: lb://NOTIFICATION-SERVICE
+          predicates:
+            - Path=/api/notifications/**
+
+        - id: analytics-service
+          uri: lb://ANALYTICS-SERVICE
+          predicates:
+            - Path=/api/analytics/**
+
+app:
+  jwt:
+    secret: ${JWT_SECRET:404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
+    issuer: rrv-gateway
+  security:
+    internal-service-secret: ${INTERNAL_SERVICE_SECRET:c8f7e2d1a5b49382716054321fedcba9876543210abcdef0123456789abcdef0}
+    internal-service-id: api-gateway
+  services:
+    auth-service-url: ${AUTH_SERVICE_URL:http://localhost:8081}

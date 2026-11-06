@@ -1,0 +1,5 @@
+# Created at 2026-11-06T13:14:41.670
+Boot Manifest-JAR contains absolute paths in classpath 'e:\avmsmart clients projects\RRV_GREEN_BASKET\rrv-green-basket-backend\product-service\target\test-classes'
+Hint: <argLine>-Djdk.net.URLClassPath.disableClassPathURLCheck=true</argLine>
+'other' has different root
+

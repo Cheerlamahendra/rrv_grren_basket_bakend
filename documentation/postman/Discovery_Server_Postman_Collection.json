@@ -1,0 +1,172 @@
+{
+  "info": {
+    "_postman_id": "e98e6bf7-6c84-4882-995f-9d32152a5c40",
+    "name": "RRV Green Basket - Discovery Server",
+    "description": "Postman API Collection for testing Netflix Eureka Discovery Server and Management Endpoints in RRV Green Basket E-Commerce Platform.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. Discovery Server Status & Metrics",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "http://localhost:8761/api/discovery/status",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8761",
+          "path": [
+            "api",
+            "discovery",
+            "status"
+          ]
+        },
+        "description": "Retrieves the current health, uptime, total registered services, and JVM memory utilization of the Discovery Server."
+      },
+      "response": []
+    },
+    {
+      "name": "2. List All Registered Services",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "http://localhost:8761/api/discovery/services",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8761",
+          "path": [
+            "api",
+            "discovery",
+            "services"
+          ]
+        },
+        "description": "Lists all microservices currently registered with Eureka along with their running instance metadata."
+      },
+      "response": []
+    },
+    {
+      "name": "3. Get Service Instances by Name (Success Scenario)",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "http://localhost:8761/api/discovery/services/DISCOVERY-SERVER",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8761",
+          "path": [
+            "api",
+            "discovery",
+            "services",
+            "DISCOVERY-SERVER"
+          ]
+        },
+        "description": "Retrieves running instances, port numbers, IP addresses, and healthCheckUrl for a specific service name."
+      },
+      "response": []
+    },
+    {
+      "name": "4. Get Service Instances by Name (404 Scenario)",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "http://localhost:8761/api/discovery/services/NON-EXISTENT-SERVICE",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8761",
+          "path": [
+            "api",
+            "discovery",
+            "services",
+            "NON-EXISTENT-SERVICE"
+          ]
+        },
+        "description": "Tests GlobalExceptionHandler handling for ResourceNotFoundException returning standardized ApiResponse error."
+      },
+      "response": []
+    },
+    {
+      "name": "5. Actuator Health Check",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "http://localhost:8761/actuator/health",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8761",
+          "path": [
+            "actuator",
+            "health"
+          ]
+        },
+        "description": "Spring Boot Actuator liveness and readiness probes."
+      },
+      "response": []
+    },
+    {
+      "name": "6. OpenAPI 3 Specification (JSON)",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "http://localhost:8761/v3/api-docs",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8761",
+          "path": [
+            "v3",
+            "api-docs"
+          ]
+        },
+        "description": "Raw OpenAPI 3 JSON documentation."
+      },
+      "response": []
+    }
+  ]
+}

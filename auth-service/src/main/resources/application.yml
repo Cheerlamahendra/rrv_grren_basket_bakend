@@ -1,0 +1,102 @@
+
+server:
+  port: 8081
+
+spring:
+  application:
+    name: auth-service
+
+  config:
+    import: "optional:configserver:http://localhost:8888"
+
+  cloud:
+    config:
+      fail-fast: false
+
+  datasource:
+    url: jdbc:mysql://localhost:3306/auth_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&createDatabaseIfNotExist=true
+    username: ${MYSQL_USER:root}
+    password: ${MYSQL_PASSWORD:mahendra}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 5
+      idle-timeout: 300000
+      connection-timeout: 20000
+      max-lifetime: 1200000
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.MySQLDialect
+
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    locations: classpath:db/migration
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+    register-with-eureka: true
+    fetch-registry: true
+
+  instance:
+    prefer-ip-address: true
+    ip-address: 192.168.0.103
+    instance-id: ${spring.application.name}:${server.port}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+
+  endpoint:
+    health:
+      show-details: always
+
+app:
+  jwt:
+    secret: ${JWT_SECRET:404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
+    access-token-expiration-ms: 1800000
+    refresh-token-expiration-ms: 604800000
+    issuer: rrv-green-basket-auth
+
+  otp:
+    expiration-minutes: 5
+    max-attempts: 3
+    resend-cooldown-seconds: 60
+
+  security:
+    admin-max-failed-attempts: 5
+    admin-lockout-duration-minutes: 15
+    internal-service-secret: ${INTERNAL_SERVICE_SECRET:c8f7e2d1a5b49382716054321fedcba9876543210abcdef0123456789abcdef0}
+    internal-service-id: auth-service
+    authorized-internal-services: api-gateway,customer-service,order-service,product-service
+
+    test-admin:
+      email: testadmin@rrvgreenbasket.com
+      password: ${TEST_ADMIN_PASSWORD:TestAdmin@123}
+
+  services:
+    customer-service-url: ${CUSTOMER_SERVICE_URL:http://localhost:8082}
+
+  email:
+    provider: mock
+    api-url: ""
+    api-key: ""
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+
+  swagger-ui:
+    path: /swagger-ui.html
+    operationsSorter: method

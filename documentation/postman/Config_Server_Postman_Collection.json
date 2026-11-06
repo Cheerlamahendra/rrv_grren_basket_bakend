@@ -1,0 +1,196 @@
+{
+  "info": {
+    "_postman_id": "b3e5e492-23c4-4c57-8ae9-6791b72a0f82",
+    "name": "RRV Green Basket - Config Server",
+    "description": "Postman API Collection for testing Spring Cloud Config Server and Management Endpoints in RRV Green Basket E-Commerce Platform.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. Config Server Status & Metrics",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "http://localhost:8888/api/config/status",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8888",
+          "path": [
+            "api",
+            "config",
+            "status"
+          ]
+        },
+        "description": "Retrieves the current operational status, active profiles, search locations, and JVM memory utilization of the Config Server."
+      },
+      "response": []
+    },
+    {
+      "name": "2. Inspect Auth Service Dev Config (Sanitized)",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "http://localhost:8888/api/config/services/auth-service/dev",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8888",
+          "path": [
+            "api",
+            "config",
+            "services",
+            "auth-service",
+            "dev"
+          ]
+        },
+        "description": "Inspects composite properties for Auth Service (dev profile) with secrets, passwords, and tokens securely masked."
+      },
+      "response": []
+    },
+    {
+      "name": "3. Native Spring Cloud Config - Auth Service (dev)",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "http://localhost:8888/auth-service/dev",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8888",
+          "path": [
+            "auth-service",
+            "dev"
+          ]
+        },
+        "description": "Standard native Spring Cloud Config environment endpoint queried by Auth Service during bootstrap."
+      },
+      "response": []
+    },
+    {
+      "name": "4. Native Spring Cloud Config - Product Service (dev)",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "http://localhost:8888/product-service/dev",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8888",
+          "path": [
+            "product-service",
+            "dev"
+          ]
+        },
+        "description": "Queries product service configuration including AWS S3 bucket and presigned URL configuration placeholders."
+      },
+      "response": []
+    },
+    {
+      "name": "5. Native Spring Cloud Config - Notification Service (dev)",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "http://localhost:8888/notification-service/dev",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8888",
+          "path": [
+            "notification-service",
+            "dev"
+          ]
+        },
+        "description": "Queries notification service configuration including external Email API base URL and key placeholders."
+      },
+      "response": []
+    },
+    {
+      "name": "6. Actuator Health Probe",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "http://localhost:8888/actuator/health",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8888",
+          "path": [
+            "actuator",
+            "health"
+          ]
+        },
+        "description": "Spring Boot Actuator liveness and readiness health probe."
+      },
+      "response": []
+    },
+    {
+      "name": "7. OpenAPI 3 Specification (JSON)",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "http://localhost:8888/v3/api-docs",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8888",
+          "path": [
+            "v3",
+            "api-docs"
+          ]
+        },
+        "description": "Raw OpenAPI 3 JSON documentation for Config Server."
+      },
+      "response": []
+    }
+  ]
+}

@@ -1,0 +1,415 @@
+{
+  "info": {
+    "_postman_id": "b3e6d8a2-71c4-4d89-9a3b-f5c8e2b10111",
+    "name": "RRV Green Basket - Inventory Service",
+    "description": "Complete Postman API Collection for RRV Green Basket Inventory Service (Port 8085 directly or Port 8080 via API Gateway). Covers initial stock setup, bulk initialization, stock-in/out, adjustments, movements audit, stock alerts, multi-product reservations, confirmation, release, and public/internal availability inquiries.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "directUrl",
+      "value": "http://localhost:8085",
+      "type": "string"
+    },
+    {
+      "key": "adminToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "gatewayAssertion",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "productPublicId",
+      "value": "550e8400-e29b-41d4-a716-446655440001",
+      "type": "string"
+    },
+    {
+      "key": "orderPublicId",
+      "value": "660e8400-e29b-41d4-a716-446655440002",
+      "type": "string"
+    },
+    {
+      "key": "reservationPublicId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "alertPublicId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Admin Initial Stock Setup",
+      "item": [
+        {
+          "name": "1.1 Initialize Stock (Single Product)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"unitOfMeasure\": \"KG\",\n  \"initialQuantity\": 150.000,\n  \"lowStockThreshold\": 15.000,\n  \"reason\": \"Warehouse opening stock\",\n  \"notes\": \"Direct supplier intake\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/inventory/{{productPublicId}}/initialize",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "inventory", "{{productPublicId}}", "initialize"]
+            }
+          }
+        },
+        {
+          "name": "1.2 Bulk Initialize Stock",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"items\": [\n    {\n      \"productPublicId\": \"550e8400-e29b-41d4-a716-446655440001\",\n      \"unitOfMeasure\": \"KG\",\n      \"initialQuantity\": 100.000,\n      \"lowStockThreshold\": 10.000,\n      \"reason\": \"Bulk intake item 1\"\n    },\n    {\n      \"productPublicId\": \"550e8400-e29b-41d4-a716-446655440002\",\n      \"unitOfMeasure\": \"DOZEN\",\n      \"initialQuantity\": 50.000,\n      \"lowStockThreshold\": 5.000,\n      \"reason\": \"Bulk intake item 2\"\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/inventory/initialize",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "inventory", "initialize"]
+            }
+          }
+        },
+        {
+          "name": "1.3 Correct Initial Stock",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"correctedQuantity\": 160.000,\n  \"reason\": \"Typo correction in opening balance\",\n  \"notes\": \"Audited by warehouse manager\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/inventory/{{productPublicId}}/correct-initial",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "inventory", "{{productPublicId}}", "correct-initial"]
+            }
+          }
+        },
+        {
+          "name": "1.4 Get Product Inventory Details",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/inventory/{{productPublicId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "inventory", "{{productPublicId}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Admin Stock Operations (In/Out/Adjust)",
+      "item": [
+        {
+          "name": "2.1 Record Stock-In",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productPublicId\": \"{{productPublicId}}\",\n  \"quantity\": 50.000,\n  \"unitOfMeasure\": \"KG\",\n  \"reason\": \"Weekly fresh shipment arrival\",\n  \"referenceType\": \"PURCHASE_RECEIPT\",\n  \"referenceId\": \"PO-2026-0091\",\n  \"notes\": \"Delivered in refrigerated van\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/inventory/stock-in",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "inventory", "stock-in"]
+            }
+          }
+        },
+        {
+          "name": "2.2 Record Stock-Out",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productPublicId\": \"{{productPublicId}}\",\n  \"quantity\": 5.000,\n  \"unitOfMeasure\": \"KG\",\n  \"reason\": \"Spoilage / damaged during warehouse transfer\",\n  \"referenceType\": \"WRITE_OFF\",\n  \"referenceId\": \"SCRAP-2026-012\",\n  \"notes\": \"Authorized by supervisor\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/inventory/stock-out",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "inventory", "stock-out"]
+            }
+          }
+        },
+        {
+          "name": "2.3 Record Stock Adjustment (Relative Delta)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productPublicId\": \"{{productPublicId}}\",\n  \"adjustmentQuantity\": 2.500,\n  \"unitOfMeasure\": \"KG\",\n  \"reason\": \"Physical recount found surplus\",\n  \"referenceType\": \"AUDIT_CYCLE\",\n  \"referenceId\": \"AUDIT-Q4-01\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/inventory/adjustments",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "inventory", "adjustments"]
+            }
+          }
+        },
+        {
+          "name": "2.4 Record Stock Adjustment (Absolute Count)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productPublicId\": \"{{productPublicId}}\",\n  \"newPhysicalQuantity\": 195.000,\n  \"unitOfMeasure\": \"KG\",\n  \"reason\": \"End-of-month physical stocktake reconciliation\",\n  \"referenceType\": \"STOCKTAKE\",\n  \"referenceId\": \"EOM-OCT-2026\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/inventory/adjustments",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "inventory", "adjustments"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Admin Ledger, Audit & Alerts Query",
+      "item": [
+        {
+          "name": "3.1 List Inventory Items (Paginated & Filtered)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/inventory?page=0&size=20&sort=updatedAt,desc",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "inventory"],
+              "query": [
+                { "key": "page", "value": "0" },
+                { "key": "size", "value": "20" },
+                { "key": "sort", "value": "updatedAt,desc" },
+                { "key": "stockStatus", "value": "IN_STOCK", "disabled": true },
+                { "key": "unitOfMeasure", "value": "KG", "disabled": true }
+              ]
+            }
+          }
+        },
+        {
+          "name": "3.2 Query Stock Movements Audit",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/inventory/movements?page=0&size=20&sort=createdAt,desc",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "inventory", "movements"],
+              "query": [
+                { "key": "page", "value": "0" },
+                { "key": "size", "value": "20" },
+                { "key": "sort", "value": "createdAt,desc" },
+                { "key": "productPublicId", "value": "{{productPublicId}}", "disabled": true },
+                { "key": "movementType", "value": "STOCK_IN", "disabled": true }
+              ]
+            }
+          }
+        },
+        {
+          "name": "3.3 Query Stock Alerts",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/inventory/alerts?page=0&size=20&sort=createdAt,desc",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "inventory", "alerts"],
+              "query": [
+                { "key": "page", "value": "0" },
+                { "key": "size", "value": "20" },
+                { "key": "sort", "value": "createdAt,desc" },
+                { "key": "alertStatus", "value": "ACTIVE", "disabled": true }
+              ]
+            }
+          }
+        },
+        {
+          "name": "3.4 Update Low Stock Threshold",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"lowStockThreshold\": 25.000\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/inventory/{{productPublicId}}/threshold",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "inventory", "{{productPublicId}}", "threshold"]
+            }
+          }
+        },
+        {
+          "name": "3.5 Acknowledge Stock Alert",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/inventory/alerts/{{alertPublicId}}/acknowledge",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "inventory", "alerts", "{{alertPublicId}}", "acknowledge"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Internal Service-to-Service APIs",
+      "item": [
+        {
+          "name": "4.1 Create Stock Reservation (Multi-Product)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.success && jsonData.data && jsonData.data.publicId) {",
+                  "    pm.collectionVariables.set('reservationPublicId', jsonData.data.publicId);",
+                  "    console.log('Set reservationPublicId:', jsonData.data.publicId);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" },
+              { "key": "X-Gateway-Assertion", "value": "{{gatewayAssertion}}", "disabled": true },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderPublicId\": \"{{orderPublicId}}\",\n  \"idempotencyKey\": \"checkout-idemp-889911-001\",\n  \"ttlMinutes\": 15,\n  \"items\": [\n    {\n      \"productPublicId\": \"{{productPublicId}}\",\n      \"quantity\": 2.500,\n      \"unitOfMeasure\": \"KG\"\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{directUrl}}/api/internal/inventory/reservations",
+              "host": ["{{directUrl}}"],
+              "path": ["api", "internal", "inventory", "reservations"]
+            }
+          }
+        },
+        {
+          "name": "4.2 Confirm Stock Reservation",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" },
+              { "key": "X-Gateway-Assertion", "value": "{{gatewayAssertion}}", "disabled": true }
+            ],
+            "url": {
+              "raw": "{{directUrl}}/api/internal/inventory/reservations/{{reservationPublicId}}/confirm",
+              "host": ["{{directUrl}}"],
+              "path": ["api", "internal", "inventory", "reservations", "{{reservationPublicId}}", "confirm"]
+            }
+          }
+        },
+        {
+          "name": "4.3 Release Stock Reservation",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" },
+              { "key": "X-Gateway-Assertion", "value": "{{gatewayAssertion}}", "disabled": true }
+            ],
+            "url": {
+              "raw": "{{directUrl}}/api/internal/inventory/reservations/{{reservationPublicId}}/release",
+              "host": ["{{directUrl}}"],
+              "path": ["api", "internal", "inventory", "reservations", "{{reservationPublicId}}", "release"]
+            }
+          }
+        },
+        {
+          "name": "4.4 Internal Stock Availability Check",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" },
+              { "key": "X-Gateway-Assertion", "value": "{{gatewayAssertion}}", "disabled": true }
+            ],
+            "url": {
+              "raw": "{{directUrl}}/api/internal/inventory/products/{{productPublicId}}/availability?quantity=3.000",
+              "host": ["{{directUrl}}"],
+              "path": ["api", "internal", "inventory", "products", "{{productPublicId}}", "availability"],
+              "query": [
+                { "key": "quantity", "value": "3.000" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Customer Public Catalog Availability",
+      "item": [
+        {
+          "name": "5.1 Customer Product Availability Query",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/inventory/products/{{productPublicId}}/availability?quantity=1.000",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "inventory", "products", "{{productPublicId}}", "availability"],
+              "query": [
+                { "key": "quantity", "value": "1.000" }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

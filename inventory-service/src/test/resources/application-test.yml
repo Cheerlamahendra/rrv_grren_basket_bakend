@@ -1,0 +1,55 @@
+server:
+  port: 0
+
+spring:
+  application:
+    name: inventory-service
+  config:
+    import: ""
+  cloud:
+    config:
+      enabled: false
+      discovery:
+        enabled: false
+    discovery:
+      enabled: false
+  datasource:
+    url: jdbc:h2:mem:inventory_test_db;DB_CLOSE_DELAY=-1;MODE=MySQL;DATABASE_TO_LOWER=TRUE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ""
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    locations: classpath:db/migration
+
+eureka:
+  client:
+    enabled: false
+    register-with-eureka: false
+    fetch-registry: false
+
+app:
+  jwt:
+    secret: 404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
+    issuer: rrv-gateway
+  security:
+    internal-service-secret: c8f7e2d1a5b49382716054321fedcba9876543210abcdef0123456789abcdef0
+    internal-service-id: inventory-service
+    authorized-internal-services: api-gateway,auth-service,product-service,order-service,customer-service
+  services:
+    auth-service-url: http://localhost:8081
+    product-service-url: http://localhost:8084
+  inventory:
+    reservation-expiry-minutes: 15
+    reservation-check-interval-ms: 3600000
+    outbox-batch-size: 50
+    outbox-max-retries: 5
+    outbox-poll-interval-ms: 3600000

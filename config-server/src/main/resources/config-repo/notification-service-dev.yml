@@ -1,0 +1,24 @@
+# ==============================================================================
+# Notification Service — Development Profile Configuration (External Email API)
+# ==============================================================================
+
+server:
+  port: 8093
+
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306/notification_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+    username: ${MYSQL_USER:root}
+    password: ${MYSQL_PASSWORD:root}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+# External Email Provider Placeholders
+notification:
+  email:
+    provider: ${EMAIL_PROVIDER:mock} # toggled between 'mock' and 'external'
+    external:
+      base-url: ${EMAIL_API_BASE_URL:http://localhost:8080/mock-email}
+      api-key: ${EMAIL_API_KEY:mock_api_key}
+      sender: ${EMAIL_API_SENDER:no-reply@rrvgreenbasket.com}
+      timeout-ms: ${EMAIL_API_TIMEOUT:5000}
+      max-retries: 3

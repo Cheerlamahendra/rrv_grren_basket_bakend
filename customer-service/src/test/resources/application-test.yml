@@ -1,0 +1,37 @@
+server:
+  port: 0
+
+spring:
+  application:
+    name: customer-service
+  datasource:
+    url: jdbc:h2:mem:customer_test_db;DB_CLOSE_DELAY=-1;MODE=MySQL
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ""
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+  flyway:
+    enabled: false
+
+eureka:
+  client:
+    enabled: false
+    register-with-eureka: false
+    fetch-registry: false
+
+app:
+  jwt:
+    secret: 404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
+    issuer: rrv-green-basket-auth
+  security:
+    internal-service-secret: c8f7e2d1a5b49382716054321fedcba9876543210abcdef0123456789abcdef0
+    internal-service-id: customer-service
+    authorized-internal-services: api-gateway,auth-service,order-service
+  services:
+    auth-service-url: http://localhost:8081

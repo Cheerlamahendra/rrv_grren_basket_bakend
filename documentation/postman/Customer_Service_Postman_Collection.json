@@ -1,0 +1,565 @@
+{
+  "info": {
+    "_postman_id": "c1a93e44-8d72-4f11-9a25-e51c881fa301",
+    "name": "RRV Green Basket - Customer Service",
+    "description": "Comprehensive Postman API Collection for testing RRV Green Basket Customer Service (Port 8082 directly or Port 8080 via API Gateway). Includes Customer Profile CRUD, Multi-Address Management, Default Address Designation, and Admin Status Controls.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "directUrl",
+      "value": "http://localhost:8082",
+      "type": "string"
+    },
+    {
+      "key": "accessToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "customerId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "addressId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Authentication (Token Setup)",
+      "item": [
+        {
+          "name": "1.1 Admin Login (Obtain Admin JWT)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.success && jsonData.data && jsonData.data.accessToken) {",
+                  "    pm.collectionVariables.set('accessToken', jsonData.data.accessToken);",
+                  "    console.log('Access token set successfully');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@rrvgreenbasket.com\",\n  \"password\": \"Admin@123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/admin/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "admin", "login"]
+            },
+            "description": "Authenticates default Super Admin and captures JWT Bearer access token into collection variable {{accessToken}}."
+          },
+          "response": []
+        },
+        {
+          "name": "1.2 Customer Send OTP",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mobileNumber\": \"9876543210\",\n  \"purpose\": \"LOGIN\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/customer/send-otp",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "customer", "send-otp"]
+            },
+            "description": "Generates 6-digit OTP for customer login/registration."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "2. Customer Profiles",
+      "item": [
+        {
+          "name": "2.1 Create Customer Profile",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.success && jsonData.data && jsonData.data.id) {",
+                  "    pm.collectionVariables.set('customerId', jsonData.data.id);",
+                  "    console.log('customerId set to: ' + jsonData.data.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Rajesh Kumar\",\n  \"mobileNumber\": \"9876543210\",\n  \"email\": \"rajesh.kumar@example.com\",\n  \"profileImageUrl\": \"https://cdn.rrvgreenbasket.com/profiles/rajesh.jpg\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/customers",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "customers"]
+            },
+            "description": "Initializes customer profile bound to current authenticated user. Returns 201 Created."
+          },
+          "response": []
+        },
+        {
+          "name": "2.2 Get Current Customer Profile (/me)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "customers", "me"]
+            },
+            "description": "Retrieves the full profile and address list of currently authenticated customer."
+          },
+          "response": []
+        },
+        {
+          "name": "2.3 Update Current Customer Profile (/me)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Rajesh V. Kumar\",\n  \"email\": \"rajesh.vk@example.com\",\n  \"profileImageUrl\": \"https://cdn.rrvgreenbasket.com/profiles/rajesh-updated.jpg\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "customers", "me"]
+            },
+            "description": "Updates profile details (full name, email, profile image) for current customer."
+          },
+          "response": []
+        },
+        {
+          "name": "2.4 Get Customer Profile by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/{{customerId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "customers", "{{customerId}}"]
+            },
+            "description": "Retrieves customer profile by public UUID. Accessible by owner or admin."
+          },
+          "response": []
+        },
+        {
+          "name": "2.5 Update Customer Profile by ID",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Rajesh Kumar\",\n  \"email\": \"rajesh.kumar@example.com\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/{{customerId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "customers", "{{customerId}}"]
+            },
+            "description": "Updates customer profile by public UUID."
+          },
+          "response": []
+        },
+        {
+          "name": "2.6 Admin Search / List Customers",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/customers?query=Rajesh&status=ACTIVE&page=0&size=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "customers"],
+              "query": [
+                {
+                  "key": "query",
+                  "value": "Rajesh"
+                },
+                {
+                  "key": "status",
+                  "value": "ACTIVE"
+                },
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": "Administrative customer search with pagination and status filters. Requires ROLE_ADMIN."
+          },
+          "response": []
+        },
+        {
+          "name": "2.7 Admin Update Customer Status",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"ACTIVE\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/{{customerId}}/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "customers", "{{customerId}}", "status"]
+            },
+            "description": "Mutates customer account standing between ACTIVE, INACTIVE, and SUSPENDED. Requires ROLE_ADMIN."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "3. Customer Addresses",
+      "item": [
+        {
+          "name": "3.1 List All Addresses",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/me/addresses",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "customers", "me", "addresses"]
+            },
+            "description": "Returns all saved delivery addresses for the authenticated customer, ordered by default address first."
+          },
+          "response": []
+        },
+        {
+          "name": "3.2 Add Home Address (Auto-Default)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.success && jsonData.data && jsonData.data.id) {",
+                  "    pm.collectionVariables.set('addressId', jsonData.data.id);",
+                  "    console.log('addressId set to: ' + jsonData.data.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"receiverName\": \"Rajesh Kumar\",\n  \"receiverMobile\": \"9876543210\",\n  \"addressLine1\": \"Flat 101, Green Meadows\",\n  \"addressLine2\": \"12th Main, Indiranagar\",\n  \"landmark\": \"Near Indiranagar Metro Station\",\n  \"city\": \"Bangalore\",\n  \"state\": \"Karnataka\",\n  \"pincode\": \"560038\",\n  \"country\": \"India\",\n  \"addressType\": \"HOME\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/me/addresses",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "customers", "me", "addresses"]
+            },
+            "description": "Adds a residential delivery address. First address automatically becomes default (isDefault = true)."
+          },
+          "response": []
+        },
+        {
+          "name": "3.3 Add Work Address (Set Default)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"receiverName\": \"Rajesh Kumar (Office)\",\n  \"receiverMobile\": \"9876543210\",\n  \"addressLine1\": \"Manyata Tech Park, Block G3\",\n  \"addressLine2\": \"Outer Ring Road, Nagawara\",\n  \"landmark\": \"Opposite Gate 2\",\n  \"city\": \"Bangalore\",\n  \"state\": \"Karnataka\",\n  \"pincode\": \"560045\",\n  \"country\": \"India\",\n  \"addressType\": \"WORK\",\n  \"isDefault\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/me/addresses",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "customers", "me", "addresses"]
+            },
+            "description": "Adds a work delivery address with isDefault = true. Automatically resets previous default address to false."
+          },
+          "response": []
+        },
+        {
+          "name": "3.4 Get Address by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/me/addresses/{{addressId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "customers", "me", "addresses", "{{addressId}}"]
+            },
+            "description": "Fetches single address by public UUID."
+          },
+          "response": []
+        },
+        {
+          "name": "3.5 Update Address",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"receiverName\": \"Rajesh Kumar\",\n  \"receiverMobile\": \"9876543210\",\n  \"addressLine1\": \"Flat 202, Green Meadows Deluxe\",\n  \"addressLine2\": \"12th Main, Indiranagar\",\n  \"landmark\": \"Near Indiranagar Metro Station\",\n  \"city\": \"Bangalore\",\n  \"state\": \"Karnataka\",\n  \"pincode\": \"560038\",\n  \"country\": \"India\",\n  \"addressType\": \"HOME\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/me/addresses/{{addressId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "customers", "me", "addresses", "{{addressId}}"]
+            },
+            "description": "Updates address details."
+          },
+          "response": []
+        },
+        {
+          "name": "3.6 Set Address as Default",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/me/addresses/{{addressId}}/default",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "customers", "me", "addresses", "{{addressId}}", "default"]
+            },
+            "description": "Designates this address as the default delivery destination and clears default flag on all others."
+          },
+          "response": []
+        },
+        {
+          "name": "3.7 Delete Address",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/me/addresses/{{addressId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "customers", "me", "addresses", "{{addressId}}"]
+            },
+            "description": "Deletes delivery address. If default was deleted, automatically promotes next newest remaining address."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "4. Internal S2S & Security Verification",
+      "item": [
+        {
+          "name": "4.1 Internal State Probe (by AuthUser UUID)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "X-Internal-Service-Id", "value": "auth-service" },
+              { "key": "X-Internal-Key-Id", "value": "v1" },
+              { "key": "X-Internal-Timestamp", "value": "{{$timestamp}}000" },
+              { "key": "X-Internal-Nonce", "value": "{{$guid}}" },
+              { "key": "X-Internal-Signature", "value": "{{s2s_signature}}" }
+            ],
+            "url": {
+              "raw": "http://localhost:8082/api/customers/internal/by-auth-user/{{authUserId}}",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8082",
+              "path": ["api", "customers", "internal", "by-auth-user", "{{authUserId}}"]
+            },
+            "description": "Internal S2S probe used by Auth Service onboarding saga to verify if profile exists."
+          },
+          "response": []
+        },
+        {
+          "name": "4.2 Internal Compensation Cleanup",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "X-Internal-Service-Id", "value": "auth-service" },
+              { "key": "X-Internal-Key-Id", "value": "v1" },
+              { "key": "X-Internal-Timestamp", "value": "{{$timestamp}}000" },
+              { "key": "X-Internal-Nonce", "value": "{{$guid}}" },
+              { "key": "X-Internal-Signature", "value": "{{s2s_signature}}" }
+            ],
+            "url": {
+              "raw": "http://localhost:8082/api/customers/internal/by-auth-user/{{authUserId}}",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8082",
+              "path": ["api", "customers", "internal", "by-auth-user", "{{authUserId}}"]
+            },
+            "description": "Internal S2S compensation cleanup invoked when customer onboarding saga fails."
+          },
+          "response": []
+        },
+        {
+          "name": "4.3 Header Spoofing Rejection (Raw X-User-* Without Assertion)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "X-User-Id", "value": "spoofed-uuid-value" },
+              { "key": "X-User-Role", "value": "ROLE_CUSTOMER" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "customers", "me"]
+            },
+            "description": "Verifies that direct spoofing of X-User-* headers is rejected with 401 Unauthorized."
+          },
+          "response": []
+        },
+        {
+          "name": "4.4 Admin Access to Customer /me Rejected (403 Forbidden)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/customers/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "customers", "me"]
+            },
+            "description": "Verifies that an administrator with ROLE_ADMIN is forbidden (403) from accessing customer /me."
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

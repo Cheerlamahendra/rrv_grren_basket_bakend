@@ -1,0 +1,247 @@
+{
+  "info": {
+    "_postman_id": "f5e93c12-3b48-4c8e-a971-d64c126d58e3",
+    "name": "RRV Green Basket - Auth Service",
+    "description": "Postman API Collection for testing Auth Service (Port 8081 / Gateway 8080): Passwordless Mobile OTP Registration, Auto-login, Customer Login, Immediate Multi-device Logout, Refresh Token Rotation, S2S HMAC Validation, and Dedicated Test Admin Lockout.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. Customer - Register Send OTP",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Accept", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"fullName\": \"Mahendra Kumar\",\n  \"mobileNumber\": \"+919876500001\",\n  \"email\": \"mahendra@example.com\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:8080/api/auth/customer/register/send-otp",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8080",
+          "path": ["api", "auth", "customer", "register", "send-otp"]
+        },
+        "description": "Sends registration OTP and stages full name and email in otp_challenges challenge metadata."
+      },
+      "response": []
+    },
+    {
+      "name": "2. Customer - Register Verify OTP & Auto-Login",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "var jsonData = pm.response.json();",
+              "if (jsonData.success && jsonData.data) {",
+              "    pm.environment.set(\"customer_access_token\", jsonData.data.accessToken);",
+              "    pm.environment.set(\"customer_refresh_token\", jsonData.data.refreshToken);",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Accept", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"mobileNumber\": \"+919876500001\",\n  \"otp\": \"123456\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:8080/api/auth/customer/register/verify-otp",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8080",
+          "path": ["api", "auth", "customer", "register", "verify-otp"]
+        },
+        "description": "Verifies registration OTP, stages AuthUser, creates Customer Profile via S2S saga, creates device session, and returns access/refresh tokens."
+      },
+      "response": []
+    },
+    {
+      "name": "3. Customer - Login Send OTP",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Accept", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"mobileNumber\": \"+919876500001\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:8080/api/auth/customer/login/send-otp",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8080",
+          "path": ["api", "auth", "customer", "login", "send-otp"]
+        },
+        "description": "Sends login OTP to registered customer."
+      },
+      "response": []
+    },
+    {
+      "name": "4. Customer - Login Verify OTP (New Device Session)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "var jsonData = pm.response.json();",
+              "if (jsonData.success && jsonData.data) {",
+              "    pm.environment.set(\"device_b_access_token\", jsonData.data.accessToken);",
+              "    pm.environment.set(\"device_b_refresh_token\", jsonData.data.refreshToken);",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Accept", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"mobileNumber\": \"+919876500001\",\n  \"otp\": \"654321\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:8080/api/auth/customer/login/verify-otp",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8080",
+          "path": ["api", "auth", "customer", "login", "verify-otp"]
+        },
+        "description": "Authenticates returning customer and creates a separate, isolated device session."
+      },
+      "response": []
+    },
+    {
+      "name": "5. Customer - Logout from Current Device",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{customer_access_token}}" },
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Accept", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"refreshToken\": \"{{customer_refresh_token}}\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:8080/api/auth/customer/logout",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8080",
+          "path": ["api", "auth", "customer", "logout"]
+        },
+        "description": "Revokes current device session in customer_sessions and refresh token family. Immediate invalidation enforced."
+      },
+      "response": []
+    },
+    {
+      "name": "6. Token Rotation - Refresh Token",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Accept", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"refreshToken\": \"{{customer_refresh_token}}\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:8080/api/auth/refresh",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8080",
+          "path": ["api", "auth", "refresh"]
+        },
+        "description": "Exchanges a valid refresh token for a new access token and rotated refresh token."
+      },
+      "response": []
+    },
+    {
+      "name": "7. S2S - Internal Session Validation",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "X-Internal-Service-Id", "value": "api-gateway" },
+          { "key": "X-Internal-Key-Id", "value": "v1" },
+          { "key": "X-Internal-Timestamp", "value": "{{$timestamp}}000" },
+          { "key": "X-Internal-Nonce", "value": "{{$guid}}" },
+          { "key": "X-Internal-Signature", "value": "{{s2s_signature}}" }
+        ],
+        "url": {
+          "raw": "http://localhost:8081/api/auth/internal/sessions/{{session_id}}/validate",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8081",
+          "path": ["api", "auth", "internal", "sessions", "{{session_id}}", "validate"]
+        },
+        "description": "Internal S2S endpoint verifying live session status with HMAC-SHA256 signature and nonce protection."
+      },
+      "response": []
+    },
+    {
+      "name": "8. Admin - Successful Login",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Accept", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"admin@rrvgreenbasket.com\",\n  \"password\": \"Admin@123\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:8080/api/auth/admin/login",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8080",
+          "path": ["api", "auth", "admin", "login"]
+        },
+        "description": "Primary administrator BCrypt login returning ROLE_ADMIN access token."
+      },
+      "response": []
+    },
+    {
+      "name": "9. Admin - Dedicated Test Admin Lockout Attempt",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Accept", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"testadmin@rrvgreenbasket.com\",\n  \"password\": \"WrongPassword!\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:8080/api/auth/admin/login",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8080",
+          "path": ["api", "auth", "admin", "login"]
+        },
+        "description": "Dedicated test admin account lockout verification without affecting primary administrator."
+      },
+      "response": []
+    }
+  ]
+}

@@ -1,0 +1,81 @@
+# ==============================================================================
+# RRV Green Basket — Discovery Server Configuration (Eureka)
+# Owner: AVM Smart Solutions
+# ==============================================================================
+
+server:
+  port: 8761
+  servlet:
+    context-path: /
+
+spring:
+  application:
+    name: discovery-server
+  lifecycle:
+    timeout-per-shutdown-phase: 20s
+
+# ==============================================================================
+# Eureka Server Configuration Details:
+# 1. register-with-eureka: false -> Tells the server NOT to register itself as a client.
+#    Since this is the registry node, self-registration is redundant in a standalone setup.
+# 2. fetch-registry: false -> Standalone Eureka does not need to poll remote peers.
+# 3. enable-self-preservation: false -> In local development/testing, if a microservice
+#    stops, we want Eureka to promptly evict it rather than waiting indefinitely.
+#    In a production multi-zone cluster, this should be set to true.
+# 4. eviction-interval-timer-in-ms: 5000 -> Check for expired leases every 5 seconds.
+# ==============================================================================
+eureka:
+  instance:
+    hostname: localhost
+    prefer-ip-address: true
+  client:
+    register-with-eureka: false
+    fetch-registry: false
+    service-url:
+      defaultZone: http://${eureka.instance.hostname}:${server.port}/eureka/
+  server:
+    enable-self-preservation: false
+    eviction-interval-timer-in-ms: 5000
+    response-cache-update-interval-ms: 3000
+    renewal-percent-threshold: 0.85
+
+# ==============================================================================
+# Spring Boot Actuator Endpoints for Health Checks and Observability
+# ==============================================================================
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,env
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true
+  info:
+    env:
+      enabled: true
+
+# ==============================================================================
+# OpenAPI / Swagger UI Configuration
+# ==============================================================================
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+    enabled: true
+  swagger-ui:
+    path: /swagger-ui.html
+    enabled: true
+    operationsSorter: method
+    tagsSorter: alpha
+
+# ==============================================================================
+# Logging Configuration
+# ==============================================================================
+logging:
+  level:
+    root: INFO
+    com.rrvgreenbasket.discovery: DEBUG
+    com.netflix.eureka: INFO
+    com.netflix.discovery: INFO
+    org.springframework.cloud: INFO

@@ -1,0 +1,22 @@
+# ==============================================================================
+# Order Service — Development Profile Configuration
+# ==============================================================================
+
+server:
+  port: 8088
+
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306/order_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+    username: ${MYSQL_USER:root}
+    password: ${MYSQL_PASSWORD:root}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+# Order Cutoff & Packaging Rules
+order:
+  daily-cutoff-hour: 22 # 10:00 PM cutoff for next morning delivery
+  minimum-order-value: 200.00
+  packaging-charge: 25.00
+  free-delivery-threshold: 500.00
+  default-delivery-charge: 40.00
+  checkout-saga-timeout-seconds: 30
