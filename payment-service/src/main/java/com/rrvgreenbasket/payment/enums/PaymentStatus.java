@@ -1,0 +1,19 @@
+package com.rrvgreenbasket.payment.enums;
+
+public enum PaymentStatus {
+    PENDING,
+    INITIATED,
+    AUTHORIZED,
+    PROCESSING,
+    ADVANCE_PAYMENT_PENDING,
+    ADVANCE_PAYMENT_INITIATED,
+    ADVANCE_PAID,
+    PARTIALLY_PAID,
+    DELIVERY_COLLECTION_PENDING,
+    PAID,
+    FAILED,
+    CANCELLED,
+    REFUND_PENDING,
+    PARTIALLY_REFUNDED,
+    REFUNDED
+}

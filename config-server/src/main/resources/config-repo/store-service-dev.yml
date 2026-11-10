@@ -1,0 +1,23 @@
+# ==============================================================================
+# Store Service — Development Profile Configuration (Including AWS S3)
+# ==============================================================================
+
+server:
+  port: 8090
+
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306/store_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&createDatabaseIfNotExist=true
+    username: ${MYSQL_USER:root}
+    password: ${MYSQL_PASSWORD:mahendra}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+aws:
+  s3:
+    provider: ${AWS_S3_PROVIDER:aws-s3}
+    region: ${AWS_REGION:ap-southeast-2}
+    bucket-name: ${AWS_S3_BUCKET:vegetable-ecommerce-product-images-2026}
+    cloudfront-domain: ${AWS_CLOUDFRONT_DOMAIN:https://cdn.rrvgreenbasket.com}
+    logo-prefix: branding/logo/
+    favicon-prefix: branding/favicon/
+    max-file-size-bytes: 2097152

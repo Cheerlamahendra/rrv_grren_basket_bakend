@@ -1,0 +1,480 @@
+{
+  "info": {
+    "_postman_id": "c7f9e8a1-52b3-4e89-8d1a-f7b8e1a20222",
+    "name": "RRV Green Basket - Payment Service",
+    "description": "Comprehensive Postman API Collection for RRV Green Basket Payment Service (Port 8089 directly or Port 8080 via API Gateway). Covers full online payments, 50% advance partial COD, delivery cash collections, Razorpay checkout verification, webhooks, refunds, idempotency, and admin metrics.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "directUrl",
+      "value": "http://localhost:8089",
+      "type": "string"
+    },
+    {
+      "key": "customerToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "adminToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "internalSecret",
+      "value": "internal-secret-token-for-s2s-auth-rrv-green-basket",
+      "type": "string"
+    },
+    {
+      "key": "orderPublicId",
+      "value": "550e8400-e29b-41d4-a716-446655440001",
+      "type": "string"
+    },
+    {
+      "key": "paymentPublicId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "razorpayOrderId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "razorpayPaymentId",
+      "value": "pay_test_payment_999",
+      "type": "string"
+    },
+    {
+      "key": "razorpaySignature",
+      "value": "sample_signature_placeholder",
+      "type": "string"
+    },
+    {
+      "key": "collectorId",
+      "value": "agent-ramesh-01",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Customer Payments",
+      "item": [
+        {
+          "name": "1.1 Initiate Full Online Payment (ONLINE_FULL - ₹400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{customerToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderPublicId\": \"{{orderPublicId}}\",\n  \"amount\": 400.00,\n  \"paymentMethod\": \"ONLINE_FULL\",\n  \"idempotencyKey\": \"idemp-full-001\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/payments/initiate",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "payments", "initiate"]
+            }
+          }
+        },
+        {
+          "name": "1.2 Initiate Partial COD Payment (50% Advance - ₹200 now + ₹200 at delivery)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{customerToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderPublicId\": \"{{orderPublicId}}\",\n  \"totalOrderAmount\": 400.00,\n  \"idempotencyKey\": \"idemp-cod-001\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/payments/partial-cod/initiate",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "payments", "partial-cod", "initiate"]
+            }
+          }
+        },
+        {
+          "name": "1.3 Verify Payment Checkout Signature",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{customerToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderPublicId\": \"{{orderPublicId}}\",\n  \"paymentPublicId\": \"{{paymentPublicId}}\",\n  \"razorpayOrderId\": \"{{razorpayOrderId}}\",\n  \"razorpayPaymentId\": \"{{razorpayPaymentId}}\",\n  \"razorpaySignature\": \"{{razorpaySignature}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/payments/verify",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "payments", "verify"]
+            }
+          }
+        },
+        {
+          "name": "1.4 Get Payment Details by Order Public ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{customerToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/payments/orders/{{orderPublicId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "payments", "orders", "{{orderPublicId}}"]
+            }
+          }
+        },
+        {
+          "name": "1.5 Get Payment Status by Public ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{customerToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/payments/{{paymentPublicId}}/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "payments", "{{paymentPublicId}}", "status"]
+            }
+          }
+        },
+        {
+          "name": "1.6 Get Customer Payment History (Paginated)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{customerToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/payments/history?page=0&size=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "payments", "history"],
+              "query": [
+                { "key": "page", "value": "0" },
+                { "key": "size", "value": "10" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "1.7 Retry Failed Payment",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{customerToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idempotencyKey\": \"retry-idemp-001\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/payments/{{paymentPublicId}}/retry",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "payments", "{{paymentPublicId}}", "retry"]
+            }
+          }
+        },
+        {
+          "name": "1.8 Get Payment Refunds",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{customerToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/payments/{{paymentPublicId}}/refunds",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "payments", "{{paymentPublicId}}", "refunds"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Internal COD Cash Collections (Delivery / S2S)",
+      "item": [
+        {
+          "name": "2.1 Record COD Cash Collection at Doorstep (₹200.00)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "X-Internal-Service", "value": "{{internalSecret}}" },
+              { "key": "X-User-Roles", "value": "ROLE_DELIVERY" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderPublicId\": \"{{orderPublicId}}\",\n  \"amount\": 200.00,\n  \"collectorId\": \"{{collectorId}}\",\n  \"collectorName\": \"Ramesh Kumar\",\n  \"receiptNumber\": \"REC-COD-2026-001\",\n  \"notes\": \"Collected cash at customer door\",\n  \"idempotencyKey\": \"idemp-collect-001\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/internal/payments/{{paymentPublicId}}/collect-cod",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "internal", "payments", "{{paymentPublicId}}", "collect-cod"]
+            }
+          }
+        },
+        {
+          "name": "2.2 Duplicate COD Cash Collection (Idempotency Test)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "X-Internal-Service", "value": "{{internalSecret}}" },
+              { "key": "X-User-Roles", "value": "ROLE_DELIVERY" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderPublicId\": \"{{orderPublicId}}\",\n  \"amount\": 200.00,\n  \"collectorId\": \"{{collectorId}}\",\n  \"collectorName\": \"Ramesh Kumar\",\n  \"receiptNumber\": \"REC-COD-2026-001\",\n  \"notes\": \"Collected cash at customer door\",\n  \"idempotencyKey\": \"idemp-collect-001\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/internal/payments/{{paymentPublicId}}/collect-cod",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "internal", "payments", "{{paymentPublicId}}", "collect-cod"]
+            }
+          }
+        },
+        {
+          "name": "2.3 Unauthorized COD Collection (Missing Auth Test)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderPublicId\": \"{{orderPublicId}}\",\n  \"amount\": 200.00,\n  \"collectorId\": \"fraud-agent\",\n  \"idempotencyKey\": \"idemp-unauth-001\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/internal/payments/{{paymentPublicId}}/collect-cod",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "internal", "payments", "{{paymentPublicId}}", "collect-cod"]
+            }
+          }
+        },
+        {
+          "name": "2.4 Get Internal Payment Details by Order ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "X-Internal-Service", "value": "{{internalSecret}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/internal/payments/orders/{{orderPublicId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "internal", "payments", "orders", "{{orderPublicId}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Admin Management",
+      "item": [
+        {
+          "name": "3.1 List All Payments (Filters & Pagination)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/payments?status=PARTIALLY_PAID&paymentMethod=PARTIAL_ONLINE_COD&page=0&size=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "payments"],
+              "query": [
+                { "key": "status", "value": "PARTIALLY_PAID" },
+                { "key": "paymentMethod", "value": "PARTIAL_ONLINE_COD" },
+                { "key": "page", "value": "0" },
+                { "key": "size", "value": "20" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "3.2 Get Payment Details by Admin",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/payments/{{paymentPublicId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "payments", "{{paymentPublicId}}"]
+            }
+          }
+        },
+        {
+          "name": "3.3 Get Payment Statistics & Metrics",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/payments/statistics",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "payments", "statistics"]
+            }
+          }
+        },
+        {
+          "name": "3.4 Get Payment Status Transition History",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/payments/{{paymentPublicId}}/history",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "payments", "{{paymentPublicId}}", "history"]
+            }
+          }
+        },
+        {
+          "name": "3.5 Admin Initiate Refund (Online Advance)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 100.00,\n  \"reason\": \"Damaged goods return\",\n  \"idempotencyKey\": \"idemp-refund-001\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/payments/{{paymentPublicId}}/refund",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "payments", "{{paymentPublicId}}", "refund"]
+            }
+          }
+        },
+        {
+          "name": "3.6 List COD Collections for Payment",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/payments/{{paymentPublicId}}/cod-collections",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "payments", "{{paymentPublicId}}", "cod-collections"]
+            }
+          }
+        },
+        {
+          "name": "3.7 Trigger Manual Razorpay Reconciliation",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/payments/reconcile",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "payments", "reconcile"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Razorpay Webhook Ingestion",
+      "item": [
+        {
+          "name": "4.1 Valid payment.captured Webhook",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Razorpay-Signature", "value": "{{razorpaySignature}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"entity\": \"event\",\n  \"account_id\": \"acc_test_123\",\n  \"event\": \"payment.captured\",\n  \"contains\": [\"payment\"],\n  \"payload\": {\n    \"payment\": {\n      \"entity\": {\n        \"id\": \"pay_rzp_webhook_999\",\n        \"order_id\": \"order_rzp_webhook_123\",\n        \"amount\": 20000,\n        \"currency\": \"INR\",\n        \"status\": \"captured\",\n        \"method\": \"upi\"\n      }\n    }\n  },\n  \"created_at\": 1794278400\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/webhooks/razorpay",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "webhooks", "razorpay"]
+            }
+          }
+        },
+        {
+          "name": "4.2 Duplicate Webhook Event (Replay Protection Test)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Razorpay-Signature", "value": "{{razorpaySignature}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"entity\": \"event\",\n  \"account_id\": \"acc_test_123\",\n  \"event\": \"payment.captured\",\n  \"contains\": [\"payment\"],\n  \"payload\": {\n    \"payment\": {\n      \"entity\": {\n        \"id\": \"pay_rzp_webhook_999\",\n        \"order_id\": \"order_rzp_webhook_123\",\n        \"amount\": 20000,\n        \"currency\": \"INR\",\n        \"status\": \"captured\",\n        \"method\": \"upi\"\n      }\n    }\n  },\n  \"created_at\": 1794278400\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/webhooks/razorpay",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "webhooks", "razorpay"]
+            }
+          }
+        },
+        {
+          "name": "4.3 Invalid Signature Webhook (Security Test)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Razorpay-Signature", "value": "invalid_forged_signature" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"entity\": \"event\",\n  \"account_id\": \"acc_test_123\",\n  \"event\": \"payment.captured\",\n  \"contains\": [\"payment\"],\n  \"payload\": {\n    \"payment\": {\n      \"entity\": {\n        \"id\": \"pay_forged_999\",\n        \"order_id\": \"order_forged_123\",\n        \"amount\": 50000,\n        \"currency\": \"INR\",\n        \"status\": \"captured\",\n        \"method\": \"card\"\n      }\n    }\n  },\n  \"created_at\": 1794278400\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/webhooks/razorpay",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "webhooks", "razorpay"]
+            }
+          }
+        },
+        {
+          "name": "4.4 payment.failed Webhook",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Razorpay-Signature", "value": "{{razorpaySignature}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"entity\": \"event\",\n  \"account_id\": \"acc_test_123\",\n  \"event\": \"payment.failed\",\n  \"contains\": [\"payment\"],\n  \"payload\": {\n    \"payment\": {\n      \"entity\": {\n        \"id\": \"pay_failed_999\",\n        \"order_id\": \"order_failed_123\",\n        \"amount\": 20000,\n        \"currency\": \"INR\",\n        \"status\": \"failed\",\n        \"error_code\": \"BAD_REQUEST_ERROR\",\n        \"error_description\": \"Payment failed by bank\"\n      }\n    }\n  },\n  \"created_at\": 1794278400\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/webhooks/razorpay",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "webhooks", "razorpay"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

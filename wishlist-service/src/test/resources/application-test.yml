@@ -1,0 +1,42 @@
+server:
+  port: 0
+
+spring:
+  application:
+    name: wishlist-service
+  datasource:
+    url: jdbc:h2:mem:wishlist_db;MODE=MySQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ""
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    database-platform: org.hibernate.dialect.H2Dialect
+    show-sql: false
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    locations: classpath:db/migration
+
+eureka:
+  client:
+    enabled: false
+    register-with-eureka: false
+    fetch-registry: false
+
+app:
+  jwt:
+    secret: 404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
+    issuer: rrv-gateway
+  security:
+    internal-service-secret: c8f7e2d1a5b49382716054321fedcba9876543210abcdef0123456789abcdef0
+    internal-service-id: wishlist-service
+    authorized-internal-services: api-gateway,auth-service,order-service,cart-service,customer-service,product-service
+
+wishlist:
+  validation:
+    max-bulk-size: 50
+  product-service:
+    url: http://product-service
+    timeout-ms: 1000

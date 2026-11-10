@@ -1,0 +1,97 @@
+server:
+  port: 8090
+
+spring:
+  application:
+    name: store-service
+
+  config:
+    import: "optional:configserver:http://localhost:8888"
+
+  cloud:
+    config:
+      fail-fast: false
+
+  servlet:
+    multipart:
+      max-file-size: 2MB
+      max-request-size: 5MB
+
+  datasource:
+    url: ${STORE_DB_URL:jdbc:mysql://localhost:3306/store_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&createDatabaseIfNotExist=true}
+    username: ${MYSQL_USER:root}
+    password: ${MYSQL_PASSWORD:mahendra}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 5
+      idle-timeout: 300000
+      connection-timeout: 20000
+      max-lifetime: 1200000
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.MySQLDialect
+
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    locations: classpath:db/migration
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+    register-with-eureka: true
+    fetch-registry: true
+    prefer-ip-address: true
+  instance:
+    prefer-ip-address: true
+    ip-address: 192.168.0.107
+    instance-id: ${spring.application.name}:${server.port}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true
+
+app:
+  jwt:
+    secret: ${JWT_SECRET:404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
+    issuer: rrv-gateway
+
+  security:
+    internal-service-secret: ${INTERNAL_SERVICE_SECRET:c8f7e2d1a5b49382716054321fedcba9876543210abcdef0123456789abcdef0}
+    internal-service-id: store-service
+    authorized-internal-services: api-gateway,auth-service,order-service,cart-service,customer-service,product-service
+
+aws:
+  s3:
+    provider: ${AWS_S3_PROVIDER:aws-s3}
+    region: ${AWS_REGION:ap-southeast-2}
+    bucket-name: ${AWS_S3_BUCKET:vegetable-ecommerce-product-images-2026}
+    cloudfront-domain: ${AWS_CLOUDFRONT_DOMAIN:https://cdn.rrvgreenbasket.com}
+    logo-prefix: branding/logo/
+    favicon-prefix: branding/favicon/
+    max-file-size-bytes: 2097152
+
+# SpringDoc OpenAPI Documentation
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    tags-sorter: alpha
+    operations-sorter: method

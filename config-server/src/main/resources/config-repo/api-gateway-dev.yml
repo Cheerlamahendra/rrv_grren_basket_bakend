@@ -64,6 +64,31 @@ spring:
           predicates:
             - Path=/api/cart/**
 
+        - id: wishlist-service
+          uri: lb://WISHLIST-SERVICE
+          predicates:
+            - Path=/api/wishlist/**
+
+        - id: review-service-admin
+          uri: lb://REVIEW-SERVICE
+          predicates:
+            - Path=/api/admin/reviews/**
+
+        - id: review-service
+          uri: lb://REVIEW-SERVICE
+          predicates:
+            - Path=/api/reviews/**
+
+        - id: store-service-admin
+          uri: lb://STORE-SERVICE
+          predicates:
+            - Path=/api/admin/store/**
+
+        - id: store-service
+          uri: lb://STORE-SERVICE
+          predicates:
+            - Path=/api/store/**
+
         - id: promotion-service
           uri: lb://PROMOTION-SERVICE
           predicates:
@@ -93,6 +118,16 @@ spring:
           uri: lb://PAYMENT-SERVICE
           predicates:
             - Path=/api/payments/**
+
+        - id: payment-service-admin
+          uri: lb://PAYMENT-SERVICE
+          predicates:
+            - Path=/api/admin/payments/**
+
+        - id: payment-service-webhooks
+          uri: lb://PAYMENT-SERVICE
+          predicates:
+            - Path=/api/webhooks/**
 
         - id: notification-service
           uri: lb://NOTIFICATION-SERVICE

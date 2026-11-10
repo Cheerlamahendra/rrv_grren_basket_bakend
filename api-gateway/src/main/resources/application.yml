@@ -24,9 +24,7 @@ spring:
           '[/**]':
             allowedOriginPatterns:
               - 'http://localhost:3000'
-              - 'http://localhost:*'
-              - '*'
-              - "http://192.168.0.153:3000"
+              - "http://192.168.0.172:3000"
             allowedMethods:
               - GET
               - POST
@@ -90,6 +88,36 @@ spring:
           predicates:
             - Path=/api/cart/**
 
+        # 6.5 Wishlist Service Routes
+        - id: wishlist-service
+          uri: lb://WISHLIST-SERVICE
+          predicates:
+            - Path=/api/wishlist/**
+
+        # 6.6 Review Service Admin Routes
+        - id: review-service-admin
+          uri: lb://REVIEW-SERVICE
+          predicates:
+            - Path=/api/admin/reviews/**
+
+        # 6.7 Review Service Routes
+        - id: review-service
+          uri: lb://REVIEW-SERVICE
+          predicates:
+            - Path=/api/reviews/**
+
+        # 6.8 Store Service Admin Routes
+        - id: store-service-admin
+          uri: lb://STORE-SERVICE
+          predicates:
+            - Path=/api/admin/store/**
+
+        # 6.9 Store Service Routes
+        - id: store-service
+          uri: lb://STORE-SERVICE
+          predicates:
+            - Path=/api/store/**
+
         # 7. Promotion Service Routes (Coupons & Discounts)
         - id: promotion-service
           uri: lb://PROMOTION-SERVICE
@@ -120,11 +148,23 @@ spring:
           predicates:
             - Path=/api/delivery/**
 
-        # 12. Payment Service Routes (Transactions & Webhooks)
+        # 12. Payment Service Customer Routes
         - id: payment-service
           uri: lb://PAYMENT-SERVICE
           predicates:
             - Path=/api/payments/**
+
+        # 12.5 Payment Service Admin Routes
+        - id: payment-service-admin
+          uri: lb://PAYMENT-SERVICE
+          predicates:
+            - Path=/api/admin/payments/**
+
+        # 12.6 Razorpay Webhooks Route
+        - id: payment-service-webhooks
+          uri: lb://PAYMENT-SERVICE
+          predicates:
+            - Path=/api/webhooks/**
 
         # 13. Notification Service Routes (External Email API)
         - id: notification-service
@@ -163,6 +203,9 @@ app:
       - /swagger-ui/**
       - /swagger-ui.html
       - /webjars/**
+      - /api/webhooks/**
+      - /api/webhooks/razorpay
+      - /api/store/settings/public
   security:
     internal-service-secret: ${INTERNAL_SERVICE_SECRET:c8f7e2d1a5b49382716054321fedcba9876543210abcdef0123456789abcdef0}
     internal-service-id: api-gateway

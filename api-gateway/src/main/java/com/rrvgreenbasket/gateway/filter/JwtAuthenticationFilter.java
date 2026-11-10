@@ -239,7 +239,12 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
         }
 
         // Read-only catalog endpoints are public
-        if (HttpMethod.GET.equals(method) && path.startsWith("/api/products")) {
+        if (HttpMethod.GET.equals(method) && (path.startsWith("/api/products") || path.startsWith("/api/reviews/products"))) {
+            return true;
+        }
+
+        // Bulk rating summary is public for product cards
+        if (HttpMethod.POST.equals(method) && path.startsWith("/api/reviews/products/summaries")) {
             return true;
         }
 
