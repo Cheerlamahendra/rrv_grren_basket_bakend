@@ -1,0 +1,996 @@
+{
+  "info": {
+    "_postman_id": "e8b3c2d1-9f54-4a3c-cc82-order0000001",
+    "name": "RRV Green Basket - Order Service",
+    "description": "Comprehensive Postman API Collection for RRV Green Basket Order Service (Port 8091 directly or Port 8080 via API Gateway). Covers checkout orchestration, cutoff operating window (8AM-9PM IST), next-day delivery scheduling, cart & inventory validation, stock reservations, COD auto-confirmation, customer tracking, cancellations, admin lifecycle management, and revenue analytics.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "directUrl",
+      "value": "http://localhost:8091",
+      "type": "string"
+    },
+    {
+      "key": "customerToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "otherCustomerToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "adminToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "orderPublicId",
+      "value": "550e8400-e29b-41d4-a716-446655440000",
+      "type": "string"
+    },
+    {
+      "key": "idempotencyKey",
+      "value": "9f32148b-3e5e-4c7b-91d1-6677889900aa",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "01 - Customer creates order during valid hours (12:00 PM)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{customerToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/orders",
+          "host": [
+            "orders"
+          ],
+          "path": []
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"deliveryAddress\": {\n    \"recipientName\": \"Ramesh Kumar\",\n    \"phoneNumber\": \"9876543210\",\n    \"addressLine1\": \"Flat 402, Green Meadows\",\n    \"addressLine2\": \"Collectorate Road\",\n    \"areaLocality\": \"Gandhi Nagar\",\n    \"city\": \"Kurnool\",\n    \"state\": \"Andhra Pradesh\",\n    \"pincode\": \"518002\",\n    \"latitude\": 15.8281,\n    \"longitude\": 78.0373\n  },\n  \"paymentMethod\": \"COD\",\n  \"idempotencyKey\": \"{{idempotencyKey}}\",\n  \"deliveryNotes\": \"Handle with care\"\n}"
+        }
+      }
+    },
+    {
+      "name": "02 - Customer creates order before 8 AM (Rejected with 400 Cutoff Window Closed)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{customerToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/orders",
+          "host": [
+            "orders"
+          ],
+          "path": []
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"deliveryAddress\": {\n    \"recipientName\": \"Ramesh Kumar\",\n    \"phoneNumber\": \"9876543210\",\n    \"addressLine1\": \"Flat 402, Green Meadows\",\n    \"addressLine2\": \"Collectorate Road\",\n    \"areaLocality\": \"Gandhi Nagar\",\n    \"city\": \"Kurnool\",\n    \"state\": \"Andhra Pradesh\",\n    \"pincode\": \"518002\",\n    \"latitude\": 15.8281,\n    \"longitude\": 78.0373\n  },\n  \"paymentMethod\": \"COD\",\n  \"idempotencyKey\": \"test-cutoff-early\"\n}"
+        }
+      }
+    },
+    {
+      "name": "03 - Customer creates order exactly at 8:00 AM (Accepted - Inclusive Opening)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{customerToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/orders",
+          "host": [
+            "orders"
+          ],
+          "path": []
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"deliveryAddress\": {\n    \"recipientName\": \"Ramesh Kumar\",\n    \"phoneNumber\": \"9876543210\",\n    \"addressLine1\": \"Flat 402, Green Meadows\",\n    \"addressLine2\": \"Collectorate Road\",\n    \"areaLocality\": \"Gandhi Nagar\",\n    \"city\": \"Kurnool\",\n    \"state\": \"Andhra Pradesh\",\n    \"pincode\": \"518002\",\n    \"latitude\": 15.8281,\n    \"longitude\": 78.0373\n  },\n  \"paymentMethod\": \"COD\",\n  \"idempotencyKey\": \"test-cutoff-8am\"\n}"
+        }
+      }
+    },
+    {
+      "name": "04 - Customer creates order at 8:59 PM (Accepted - Within Ordering Hours)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{customerToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/orders",
+          "host": [
+            "orders"
+          ],
+          "path": []
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"deliveryAddress\": {\n    \"recipientName\": \"Ramesh Kumar\",\n    \"phoneNumber\": \"9876543210\",\n    \"addressLine1\": \"Flat 402, Green Meadows\",\n    \"addressLine2\": \"Collectorate Road\",\n    \"areaLocality\": \"Gandhi Nagar\",\n    \"city\": \"Kurnool\",\n    \"state\": \"Andhra Pradesh\",\n    \"pincode\": \"518002\",\n    \"latitude\": 15.8281,\n    \"longitude\": 78.0373\n  },\n  \"paymentMethod\": \"COD\",\n  \"idempotencyKey\": \"test-cutoff-859pm\"\n}"
+        }
+      }
+    },
+    {
+      "name": "05 - Customer creates order exactly at 9:00 PM (Rejected - Exclusive Closing Cutoff)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{customerToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/orders",
+          "host": [
+            "orders"
+          ],
+          "path": []
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"deliveryAddress\": {\n    \"recipientName\": \"Ramesh Kumar\",\n    \"phoneNumber\": \"9876543210\",\n    \"addressLine1\": \"Flat 402, Green Meadows\",\n    \"addressLine2\": \"Collectorate Road\",\n    \"areaLocality\": \"Gandhi Nagar\",\n    \"city\": \"Kurnool\",\n    \"state\": \"Andhra Pradesh\",\n    \"pincode\": \"518002\",\n    \"latitude\": 15.8281,\n    \"longitude\": 78.0373\n  },\n  \"paymentMethod\": \"COD\",\n  \"idempotencyKey\": \"test-cutoff-900pm\"\n}"
+        }
+      }
+    },
+    {
+      "name": "06 - Customer creates order after 9 PM (Rejected - Window Closed)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{customerToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/orders",
+          "host": [
+            "orders"
+          ],
+          "path": []
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"deliveryAddress\": {\n    \"recipientName\": \"Ramesh Kumar\",\n    \"phoneNumber\": \"9876543210\",\n    \"addressLine1\": \"Flat 402, Green Meadows\",\n    \"addressLine2\": \"Collectorate Road\",\n    \"areaLocality\": \"Gandhi Nagar\",\n    \"city\": \"Kurnool\",\n    \"state\": \"Andhra Pradesh\",\n    \"pincode\": \"518002\",\n    \"latitude\": 15.8281,\n    \"longitude\": 78.0373\n  },\n  \"paymentMethod\": \"COD\",\n  \"idempotencyKey\": \"test-cutoff-late\"\n}"
+        }
+      }
+    },
+    {
+      "name": "07 - Admin disables order acceptance",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{adminToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/admin/orders/settings/status",
+          "host": [
+            "admin"
+          ],
+          "path": [
+            "orders",
+            "settings",
+            "status"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"orderAcceptanceEnabled\": false\n}"
+        }
+      }
+    },
+    {
+      "name": "08 - Customer attempts order creation when disabled (Rejected with 400)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{customerToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/orders",
+          "host": [
+            "orders"
+          ],
+          "path": []
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"deliveryAddress\": {\n    \"recipientName\": \"Ramesh Kumar\",\n    \"phoneNumber\": \"9876543210\",\n    \"addressLine1\": \"Flat 402, Green Meadows\",\n    \"addressLine2\": \"Collectorate Road\",\n    \"areaLocality\": \"Gandhi Nagar\",\n    \"city\": \"Kurnool\",\n    \"state\": \"Andhra Pradesh\",\n    \"pincode\": \"518002\",\n    \"latitude\": 15.8281,\n    \"longitude\": 78.0373\n  },\n  \"paymentMethod\": \"COD\",\n  \"idempotencyKey\": \"test-disabled\"\n}"
+        }
+      }
+    },
+    {
+      "name": "09 - Customer submits empty cart (Rejected with 422 Cart Empty)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{customerToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/orders",
+          "host": [
+            "orders"
+          ],
+          "path": []
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"deliveryAddress\": {\n    \"recipientName\": \"Ramesh Kumar\",\n    \"phoneNumber\": \"9876543210\",\n    \"addressLine1\": \"Flat 402, Green Meadows\",\n    \"addressLine2\": \"Collectorate Road\",\n    \"areaLocality\": \"Gandhi Nagar\",\n    \"city\": \"Kurnool\",\n    \"state\": \"Andhra Pradesh\",\n    \"pincode\": \"518002\",\n    \"latitude\": 15.8281,\n    \"longitude\": 78.0373\n  },\n  \"paymentMethod\": \"COD\",\n  \"idempotencyKey\": \"test-empty-cart\"\n}"
+        }
+      }
+    },
+    {
+      "name": "10 - Customer submits invalid delivery coordinates (Out of range lat/lng)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{customerToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/orders",
+          "host": [
+            "orders"
+          ],
+          "path": []
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"deliveryAddress\": {\n    \"recipientName\": \"Ramesh Kumar\",\n    \"phoneNumber\": \"9876543210\",\n    \"addressLine1\": \"Flat 402, Green Meadows\",\n    \"addressLine2\": \"Collectorate Road\",\n    \"areaLocality\": \"Gandhi Nagar\",\n    \"city\": \"Kurnool\",\n    \"state\": \"Andhra Pradesh\",\n    \"pincode\": \"518002\",\n    \"latitude\": 99.0,\n    \"longitude\": 190.0\n  },\n  \"paymentMethod\": \"COD\",\n  \"idempotencyKey\": \"test-invalid-coord\"\n}"
+        }
+      }
+    },
+    {
+      "name": "11 - Customer selects coordinates outside all delivery zones (Rejected 422)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{customerToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/orders",
+          "host": [
+            "orders"
+          ],
+          "path": []
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"deliveryAddress\": {\n    \"recipientName\": \"Ramesh Kumar\",\n    \"phoneNumber\": \"9876543210\",\n    \"addressLine1\": \"Flat 402, Green Meadows\",\n    \"addressLine2\": \"Collectorate Road\",\n    \"areaLocality\": \"Gandhi Nagar\",\n    \"city\": \"Kurnool\",\n    \"state\": \"Andhra Pradesh\",\n    \"pincode\": \"518002\",\n    \"latitude\": 16.5,\n    \"longitude\": 79.5\n  },\n  \"paymentMethod\": \"COD\",\n  \"idempotencyKey\": \"test-no-zone\"\n}"
+        }
+      }
+    },
+    {
+      "name": "12 - Customer places order below minimum order amount (Rejected 422)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{customerToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/orders",
+          "host": [
+            "orders"
+          ],
+          "path": []
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"deliveryAddress\": {\n    \"recipientName\": \"Ramesh Kumar\",\n    \"phoneNumber\": \"9876543210\",\n    \"addressLine1\": \"Flat 402, Green Meadows\",\n    \"addressLine2\": \"Collectorate Road\",\n    \"areaLocality\": \"Gandhi Nagar\",\n    \"city\": \"Kurnool\",\n    \"state\": \"Andhra Pradesh\",\n    \"pincode\": \"518002\",\n    \"latitude\": 15.8281,\n    \"longitude\": 78.0373\n  },\n  \"paymentMethod\": \"COD\",\n  \"idempotencyKey\": \"test-sub-min\"\n}"
+        }
+      }
+    },
+    {
+      "name": "13 - Customer places order above minimum order amount (Accepted)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{customerToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/orders",
+          "host": [
+            "orders"
+          ],
+          "path": []
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"deliveryAddress\": {\n    \"recipientName\": \"Ramesh Kumar\",\n    \"phoneNumber\": \"9876543210\",\n    \"addressLine1\": \"Flat 402, Green Meadows\",\n    \"addressLine2\": \"Collectorate Road\",\n    \"areaLocality\": \"Gandhi Nagar\",\n    \"city\": \"Kurnool\",\n    \"state\": \"Andhra Pradesh\",\n    \"pincode\": \"518002\",\n    \"latitude\": 15.8281,\n    \"longitude\": 78.0373\n  },\n  \"paymentMethod\": \"COD\",\n  \"idempotencyKey\": \"test-above-min\"\n}"
+        }
+      }
+    },
+    {
+      "name": "14 - Customer receives normal delivery charge (Subtotal < Free Delivery Threshold)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{customerToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/orders",
+          "host": [
+            "orders"
+          ],
+          "path": []
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"deliveryAddress\": {\n    \"recipientName\": \"Ramesh Kumar\",\n    \"phoneNumber\": \"9876543210\",\n    \"addressLine1\": \"Flat 402, Green Meadows\",\n    \"addressLine2\": \"Collectorate Road\",\n    \"areaLocality\": \"Gandhi Nagar\",\n    \"city\": \"Kurnool\",\n    \"state\": \"Andhra Pradesh\",\n    \"pincode\": \"518002\",\n    \"latitude\": 15.8281,\n    \"longitude\": 78.0373\n  },\n  \"paymentMethod\": \"COD\",\n  \"idempotencyKey\": \"test-normal-fee\"\n}"
+        }
+      }
+    },
+    {
+      "name": "15 - Customer receives free delivery (Subtotal >= Free Delivery Threshold)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{customerToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/orders",
+          "host": [
+            "orders"
+          ],
+          "path": []
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"deliveryAddress\": {\n    \"recipientName\": \"Ramesh Kumar\",\n    \"phoneNumber\": \"9876543210\",\n    \"addressLine1\": \"Flat 402, Green Meadows\",\n    \"addressLine2\": \"Collectorate Road\",\n    \"areaLocality\": \"Gandhi Nagar\",\n    \"city\": \"Kurnool\",\n    \"state\": \"Andhra Pradesh\",\n    \"pincode\": \"518002\",\n    \"latitude\": 15.8281,\n    \"longitude\": 78.0373\n  },\n  \"paymentMethod\": \"COD\",\n  \"idempotencyKey\": \"test-free-del\"\n}"
+        }
+      }
+    },
+    {
+      "name": "16 - Inventory insufficient during checkout validation (Rejected 422)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{customerToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/orders",
+          "host": [
+            "orders"
+          ],
+          "path": []
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"deliveryAddress\": {\n    \"recipientName\": \"Ramesh Kumar\",\n    \"phoneNumber\": \"9876543210\",\n    \"addressLine1\": \"Flat 402, Green Meadows\",\n    \"addressLine2\": \"Collectorate Road\",\n    \"areaLocality\": \"Gandhi Nagar\",\n    \"city\": \"Kurnool\",\n    \"state\": \"Andhra Pradesh\",\n    \"pincode\": \"518002\",\n    \"latitude\": 15.8281,\n    \"longitude\": 78.0373\n  },\n  \"paymentMethod\": \"COD\",\n  \"idempotencyKey\": \"test-stock-insufficient\"\n}"
+        }
+      }
+    },
+    {
+      "name": "17 - Product inactive in catalog (Rejected 422 Product Unavailable)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{customerToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/orders",
+          "host": [
+            "orders"
+          ],
+          "path": []
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"deliveryAddress\": {\n    \"recipientName\": \"Ramesh Kumar\",\n    \"phoneNumber\": \"9876543210\",\n    \"addressLine1\": \"Flat 402, Green Meadows\",\n    \"addressLine2\": \"Collectorate Road\",\n    \"areaLocality\": \"Gandhi Nagar\",\n    \"city\": \"Kurnool\",\n    \"state\": \"Andhra Pradesh\",\n    \"pincode\": \"518002\",\n    \"latitude\": 15.8281,\n    \"longitude\": 78.0373\n  },\n  \"paymentMethod\": \"COD\",\n  \"idempotencyKey\": \"test-prod-inactive\"\n}"
+        }
+      }
+    },
+    {
+      "name": "18 - Product price changed since cart addition (Authoritative backend pricing)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{customerToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/orders",
+          "host": [
+            "orders"
+          ],
+          "path": []
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"deliveryAddress\": {\n    \"recipientName\": \"Ramesh Kumar\",\n    \"phoneNumber\": \"9876543210\",\n    \"addressLine1\": \"Flat 402, Green Meadows\",\n    \"addressLine2\": \"Collectorate Road\",\n    \"areaLocality\": \"Gandhi Nagar\",\n    \"city\": \"Kurnool\",\n    \"state\": \"Andhra Pradesh\",\n    \"pincode\": \"518002\",\n    \"latitude\": 15.8281,\n    \"longitude\": 78.0373\n  },\n  \"paymentMethod\": \"COD\",\n  \"idempotencyKey\": \"test-price-change\"\n}"
+        }
+      }
+    },
+    {
+      "name": "19 - Inventory reservation service failure (Atomic rollback, 502/500)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{customerToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/orders",
+          "host": [
+            "orders"
+          ],
+          "path": []
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"deliveryAddress\": {\n    \"recipientName\": \"Ramesh Kumar\",\n    \"phoneNumber\": \"9876543210\",\n    \"addressLine1\": \"Flat 402, Green Meadows\",\n    \"addressLine2\": \"Collectorate Road\",\n    \"areaLocality\": \"Gandhi Nagar\",\n    \"city\": \"Kurnool\",\n    \"state\": \"Andhra Pradesh\",\n    \"pincode\": \"518002\",\n    \"latitude\": 15.8281,\n    \"longitude\": 78.0373\n  },\n  \"paymentMethod\": \"COD\",\n  \"idempotencyKey\": \"test-res-failure\"\n}"
+        }
+      }
+    },
+    {
+      "name": "20 - Payment failure / cancellation webhook (Marks payment FAILED & releases stock)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{adminToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/internal/orders/{{orderPublicId}}/payment-events",
+          "host": [
+            "internal"
+          ],
+          "path": [
+            "orders",
+            "{{orderPublicId}}",
+            "payment-events"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"eventType\": \"PAYMENT_FAILED\",\n  \"status\": \"FAILED\",\n  \"reason\": \"Customer bank declined payment\"\n}"
+        }
+      }
+    },
+    {
+      "name": "21 - Duplicate request idempotency test (Rejected 409 Conflict)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{customerToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/orders",
+          "host": [
+            "orders"
+          ],
+          "path": []
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"deliveryAddress\": {\n    \"recipientName\": \"Ramesh Kumar\",\n    \"phoneNumber\": \"9876543210\",\n    \"addressLine1\": \"Flat 402, Green Meadows\",\n    \"addressLine2\": \"Collectorate Road\",\n    \"areaLocality\": \"Gandhi Nagar\",\n    \"city\": \"Kurnool\",\n    \"state\": \"Andhra Pradesh\",\n    \"pincode\": \"518002\",\n    \"latitude\": 15.8281,\n    \"longitude\": 78.0373\n  },\n  \"paymentMethod\": \"COD\",\n  \"idempotencyKey\": \"{{idempotencyKey}}\"\n}"
+        }
+      }
+    },
+    {
+      "name": "22 - Verify next-day delivery scheduling date in order response",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{customerToken}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/orders/{{orderPublicId}}",
+          "host": [
+            "orders"
+          ],
+          "path": [
+            "{{orderPublicId}}"
+          ]
+        }
+      }
+    },
+    {
+      "name": "23 - Customer gets own order details",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{customerToken}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/orders/{{orderPublicId}}",
+          "host": [
+            "orders"
+          ],
+          "path": [
+            "{{orderPublicId}}"
+          ]
+        }
+      }
+    },
+    {
+      "name": "24 - Customer attempts to access another customer order (Rejected 403 Forbidden)",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{otherCustomerToken}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/orders/{{orderPublicId}}",
+          "host": [
+            "orders"
+          ],
+          "path": [
+            "{{orderPublicId}}"
+          ]
+        }
+      }
+    },
+    {
+      "name": "25 - Customer cancels eligible order in PLACED/CONFIRMED state",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{customerToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/orders/{{orderPublicId}}/cancel",
+          "host": [
+            "orders"
+          ],
+          "path": [
+            "{{orderPublicId}}",
+            "cancel"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"reason\": \"Ordered duplicate items by mistake\"\n}"
+        }
+      }
+    },
+    {
+      "name": "26 - Customer attempts invalid cancellation of DELIVERED order (Rejected 400)",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{customerToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/orders/{{orderPublicId}}/cancel",
+          "host": [
+            "orders"
+          ],
+          "path": [
+            "{{orderPublicId}}",
+            "cancel"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"reason\": \"Want refund\"\n}"
+        }
+      }
+    },
+    {
+      "name": "27 - Admin gets all orders with filtering and pagination",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{adminToken}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/admin/orders?page=0&size=20&status=CONFIRMED",
+          "host": [
+            "admin"
+          ],
+          "path": [
+            "orders?page=0&size=20&status=CONFIRMED"
+          ]
+        }
+      }
+    },
+    {
+      "name": "28 - Admin updates order status (CONFIRMED -> PROCESSING)",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{adminToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/admin/orders/{{orderPublicId}}/status",
+          "host": [
+            "admin"
+          ],
+          "path": [
+            "orders",
+            "{{orderPublicId}}",
+            "status"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"status\": \"PROCESSING\",\n  \"reason\": \"Batch printed and assigned to packer\"\n}"
+        }
+      }
+    },
+    {
+      "name": "29 - Admin attempts invalid status transition (PLACED -> DELIVERED direct)",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{adminToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/admin/orders/{{orderPublicId}}/status",
+          "host": [
+            "admin"
+          ],
+          "path": [
+            "orders",
+            "{{orderPublicId}}",
+            "status"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"status\": \"DELIVERED\",\n  \"reason\": \"Skip pipeline\"\n}"
+        }
+      }
+    },
+    {
+      "name": "30 - Verify complete order milestone status history",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{customerToken}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/orders/{{orderPublicId}}/status",
+          "host": [
+            "orders"
+          ],
+          "path": [
+            "{{orderPublicId}}",
+            "status"
+          ]
+        }
+      }
+    },
+    {
+      "name": "31 - Verify historical order snapshots do not change after zone updates",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{adminToken}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/admin/orders/{{orderPublicId}}",
+          "host": [
+            "admin"
+          ],
+          "path": [
+            "orders",
+            "{{orderPublicId}}"
+          ]
+        }
+      }
+    }
+  ]
+}

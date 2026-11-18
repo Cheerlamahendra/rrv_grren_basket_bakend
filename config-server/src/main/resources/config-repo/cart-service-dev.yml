@@ -5,17 +5,29 @@ spring:
   datasource:
     url: ${CART_DB_URL:jdbc:mysql://localhost:3306/cart_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&createDatabaseIfNotExist=true}
     username: ${MYSQL_USER:root}
-    password: ${MYSQL_PASSWORD}
+    password: ${MYSQL_PASSWORD:mahendra}
     driver-class-name: com.mysql.cj.jdbc.Driver
+
+cart:
+  expiration:
+    duration-days: 7
+    cleanup-interval-ms: 3600000
+    batch-size: 100
 
 app:
   services:
+    auth-service-url: ${AUTH_SERVICE_URL:http://localhost:8081}
     product-service-url: ${PRODUCT_SERVICE_URL:http://localhost:8084}
     inventory-service-url: ${INVENTORY_SERVICE_URL:http://localhost:8085}
+
+  client:
+    connect-timeout-ms: 2000
+    read-timeout-ms: 3000
 
   jwt:
     issuer: rrv-gateway
 
   security:
-    internal-service-secret: ${INTERNAL_SERVICE_SECRET}
+    internal-service-id: cart-service
+    internal-service-secret: ${INTERNAL_SERVICE_SECRET:c8f7e2d1a5b49382716054321fedcba9876543210abcdef0123456789abcdef0}
     gateway-audience: rrv-internal-services

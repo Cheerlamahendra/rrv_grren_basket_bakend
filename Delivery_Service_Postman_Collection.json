@@ -1,0 +1,367 @@
+{
+  "info": {
+    "name": "RRV Green Basket - Delivery Service API",
+    "_postman_id": "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d",
+    "description": "Postman Collection for RRV Green Basket Delivery Service (Port 8090 / Gateway Port 8080). Includes complete Hybrid Delivery Validation (Polygon + PIN code + City + State), Admin Delivery Zone Management, and Customer Availability Checks with backward compatibility.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "adminToken",
+      "value": "PASTE_ADMIN_BEARER_TOKEN",
+      "type": "string"
+    },
+    {
+      "key": "customerToken",
+      "value": "PASTE_CUSTOMER_BEARER_TOKEN",
+      "type": "string"
+    },
+    {
+      "key": "zoneId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Admin Delivery Zone Management",
+      "item": [
+        {
+          "name": "Create Delivery Zone (Polygon + City + State + PIN)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 201 Created', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.data && jsonData.data.publicId) {",
+                  "    pm.collectionVariables.set('zoneId', jsonData.data.publicId);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"zoneName\": \"Kurnool Central Zone\",\n  \"zoneCode\": \"KUR-CENTRAL-01\",\n  \"description\": \"Central delivery coverage for Kurnool city\",\n  \"city\": \"Kurnool\",\n  \"state\": \"Andhra Pradesh\",\n  \"pincode\": \"518001\",\n  \"pincodes\": [\"518001\", \"518002\"],\n  \"deliveryCharge\": 30.00,\n  \"minimumOrderAmount\": 199.00,\n  \"freeDeliveryThreshold\": 499.00,\n  \"estimatedDeliveryTime\": \"NEXT_DAY\",\n  \"active\": true,\n  \"boundary\": {\n    \"type\": \"Polygon\",\n    \"coordinates\": [\n      [\n        [78.0300, 15.8200],\n        [78.0500, 15.8200],\n        [78.0500, 15.8400],\n        [78.0300, 15.8400],\n        [78.0300, 15.8200]\n      ]\n    ]\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/delivery/zones",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "delivery", "zones"]
+            }
+          }
+        },
+        {
+          "name": "Get All Delivery Zones (Paginated)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/delivery/zones?page=0&size=20&search=Kurnool",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "delivery", "zones"],
+              "query": [
+                { "key": "page", "value": "0" },
+                { "key": "size", "value": "20" },
+                { "key": "search", "value": "Kurnool" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Zone by Public ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/delivery/zones/{{zoneId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "delivery", "zones", "{{zoneId}}"]
+            }
+          }
+        },
+        {
+          "name": "Update Delivery Zone (With PIN Code Clear / Update)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"zoneName\": \"Kurnool Prime Zone\",\n  \"description\": \"Expanded prime area delivery\",\n  \"city\": \"Kurnool\",\n  \"state\": \"Andhra Pradesh\",\n  \"pincode\": \"518001\",\n  \"pincodes\": [\"518001\", \"518002\", \"518003\"],\n  \"clearPincode\": false,\n  \"deliveryCharge\": 35.00,\n  \"minimumOrderAmount\": 249.00,\n  \"freeDeliveryThreshold\": 599.00,\n  \"estimatedDeliveryTime\": \"SAME_DAY\",\n  \"active\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/delivery/zones/{{zoneId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "delivery", "zones", "{{zoneId}}"]
+            }
+          }
+        },
+        {
+          "name": "Deactivate Delivery Zone (Status Patch)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"active\": false\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/delivery/zones/{{zoneId}}/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "delivery", "zones", "{{zoneId}}", "status"]
+            }
+          }
+        },
+        {
+          "name": "Activate Delivery Zone (Status Patch)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"active\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/delivery/zones/{{zoneId}}/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "delivery", "zones", "{{zoneId}}", "status"]
+            }
+          }
+        },
+        {
+          "name": "Delete Delivery Zone (Soft Delete)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/delivery/zones/{{zoneId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "delivery", "zones", "{{zoneId}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Customer Delivery Availability & Hybrid Validation",
+      "item": [
+        {
+          "name": "Get Active Delivery Zones (Customer)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/delivery/zones",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "delivery", "zones"]
+            }
+          }
+        },
+        {
+          "name": "Check Delivery Availability - 1. Valid Hybrid Request (Inside Zone)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"latitude\": 15.8300,\n  \"longitude\": 78.0400,\n  \"address\": \"Near RTC Bus Stand\",\n  \"city\": \"Kurnool\",\n  \"state\": \"Andhra Pradesh\",\n  \"pincode\": \"518001\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/delivery/check-availability",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "delivery", "check-availability"]
+            }
+          }
+        },
+        {
+          "name": "Check Delivery Availability - 2. Wrong PIN Code",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"latitude\": 15.8300,\n  \"longitude\": 78.0400,\n  \"address\": \"Kurnool Outskirts\",\n  \"city\": \"Kurnool\",\n  \"state\": \"Andhra Pradesh\",\n  \"pincode\": \"518099\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/delivery/check-availability",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "delivery", "check-availability"]
+            }
+          }
+        },
+        {
+          "name": "Check Delivery Availability - 3. Wrong City",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"latitude\": 17.3850,\n  \"longitude\": 78.4867,\n  \"address\": \"Charminar\",\n  \"city\": \"Hyderabad\",\n  \"state\": \"Telangana\",\n  \"pincode\": \"500002\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/delivery/check-availability",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "delivery", "check-availability"]
+            }
+          }
+        },
+        {
+          "name": "Check Delivery Availability - 4. Wrong State",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"latitude\": 15.8300,\n  \"longitude\": 78.0400,\n  \"address\": \"Kurnool City Center\",\n  \"city\": \"Kurnool\",\n  \"state\": \"Karnataka\",\n  \"pincode\": \"518001\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/delivery/check-availability",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "delivery", "check-availability"]
+            }
+          }
+        },
+        {
+          "name": "Check Delivery Availability - 5. Coordinates Outside Polygon",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"latitude\": 15.9500,\n  \"longitude\": 78.2000,\n  \"address\": \"Remote Village Outside Kurnool\",\n  \"city\": \"Kurnool\",\n  \"state\": \"Andhra Pradesh\",\n  \"pincode\": \"518001\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/delivery/check-availability",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "delivery", "check-availability"]
+            }
+          }
+        },
+        {
+          "name": "Check Delivery Availability - 6. Legacy Coordinates-Only (Backward Compatible)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"latitude\": 15.8300,\n  \"longitude\": 78.0400,\n  \"address\": \"Kurnool Station Road\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/delivery/check-availability",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "delivery", "check-availability"]
+            }
+          }
+        },
+        {
+          "name": "Resolve Delivery Zone from Coordinates (GET)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/delivery/zones/resolve?latitude=15.8300&longitude=78.0400",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "delivery", "zones", "resolve"],
+              "query": [
+                { "key": "latitude", "value": "15.8300" },
+                { "key": "longitude", "value": "78.0400" }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

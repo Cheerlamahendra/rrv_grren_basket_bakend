@@ -49,7 +49,7 @@ public class InternalServiceSecurityFilter extends OncePerRequestFilter {
             NonceReplayCache nonceReplayCache,
             ObjectMapper objectMapper,
             @Value("${app.security.internal-service-secret:c8f7e2d1a5b49382716054321fedcba9876543210abcdef0123456789abcdef0}") String internalSecret,
-            @Value("${app.security.authorized-internal-services:api-gateway,customer-service,order-service}") List<String> authorizedServices) {
+            @Value("${app.security.authorized-internal-services:api-gateway,customer-service,order-service,product-service,cart-service}") List<String> authorizedServices) {
         this.signatureUtil = signatureUtil;
         this.nonceReplayCache = nonceReplayCache;
         this.objectMapper = objectMapper;

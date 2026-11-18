@@ -1,14 +1,14 @@
-
 package com.rrvgreenbasket.cart.security;
 
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
+import java.security.Principal;
 import java.util.Collection;
 import java.util.List;
 
-public class UserPrincipal implements UserDetails {
+public class UserPrincipal implements UserDetails, Principal {
 
     private final String userId;
     private final String role;
@@ -16,11 +16,6 @@ public class UserPrincipal implements UserDetails {
     private final List<GrantedAuthority> authorities;
 
     public UserPrincipal(String userId, String role, String sessionId) {
-        this.userId = userId;
-        this.role = role;
-        this.sessionId = sessionId;
-
-        String normalizedRole = role == null ? "" : role.trim().toUpperCase();
         if (userId == null || userId.isBlank()) {
             throw new IllegalArgumentException("User ID is required");
         }
@@ -29,9 +24,11 @@ public class UserPrincipal implements UserDetails {
             throw new IllegalArgumentException("User role is required");
         }
 
-        if (sessionId == null || sessionId.isBlank()) {
-            throw new IllegalArgumentException("Session ID is required");
-        }
+        this.userId = userId.trim();
+        this.role = role.trim();
+        this.sessionId = sessionId != null ? sessionId.trim() : "";
+
+        String normalizedRole = this.role.toUpperCase();
         if (!normalizedRole.startsWith("ROLE_")) {
             normalizedRole = "ROLE_" + normalizedRole;
         }
@@ -56,6 +53,11 @@ public class UserPrincipal implements UserDetails {
     public boolean isCustomer() {
         return authorities.stream()
                 .anyMatch(a -> a.getAuthority().equals("ROLE_CUSTOMER"));
+    }
+
+    @Override
+    public String getName() {
+        return userId;
     }
 
     @Override

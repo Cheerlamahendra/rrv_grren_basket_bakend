@@ -44,6 +44,16 @@ spring:
           predicates:
             - Path=/api/admin/inventory/**
 
+        - id: delivery-service-admin
+          uri: lb://DELIVERY-SERVICE
+          predicates:
+            - Path=/api/admin/delivery/**
+
+        - id: order-service-admin
+          uri: lb://ORDER-SERVICE
+          predicates:
+            - Path=/api/admin/orders/**
+
         - id: admin-service
           uri: lb://ADMIN-SERVICE
           predicates:

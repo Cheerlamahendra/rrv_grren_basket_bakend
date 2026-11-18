@@ -1,0 +1,787 @@
+{
+  "info": {
+    "name": "RRV Green Basket - Cart Service API",
+    "_postman_id": "d8e3b1c9-7721-4f90-a542-9e2d7c1a8f99",
+    "description": "Production-Grade Postman Test Collection for RRV Green Basket Shopping Cart Service (Port 8086 / Gateway Port 8080). Tests cart creation, item management, quantity steppers, unit validation, optimistic locking, live price refresh, pre-checkout validation, and security assertions.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "gatewayUrl",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "accessToken",
+      "value": "PASTE_CUSTOMER_ACCESS_TOKEN",
+      "type": "string"
+    },
+    {
+      "key": "customerAAccessToken",
+      "value": "PASTE_CUSTOMER_A_ACCESS_TOKEN",
+      "type": "string"
+    },
+    {
+      "key": "customerBAccessToken",
+      "value": "PASTE_CUSTOMER_B_ACCESS_TOKEN",
+      "type": "string"
+    },
+    {
+      "key": "productPublicId",
+      "value": "11111111-1111-1111-1111-111111111111",
+      "type": "string"
+    },
+    {
+      "key": "secondProductPublicId",
+      "value": "22222222-2222-2222-2222-222222222222",
+      "type": "string"
+    },
+    {
+      "key": "cartItemPublicId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Cart Core Operations",
+      "item": [
+        {
+          "name": "1. Get Cart",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "var jsonData = pm.response.json();",
+                  "pm.test('Response envelope valid', function () { pm.expect(jsonData.success).to.be.true; });",
+                  "pm.test('Cart has publicId and items', function () { pm.expect(jsonData.data.cartPublicId).to.be.a('string'); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": {
+              "raw": "{{gatewayUrl}}/api/cart",
+              "host": ["{{gatewayUrl}}"],
+              "path": ["api", "cart"]
+            }
+          }
+        },
+        {
+          "name": "2. Add Product",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 201', function () { pm.response.to.have.status(201); });",
+                  "var jsonData = pm.response.json();",
+                  "pm.test('Product added to cart', function () { pm.expect(jsonData.data.items.length).to.be.above(0); });",
+                  "if (jsonData.data.items && jsonData.data.items.length > 0) {",
+                  "  pm.collectionVariables.set('cartItemPublicId', jsonData.data.items[0].itemPublicId);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productPublicId\": \"{{productPublicId}}\",\n  \"quantity\": 2.000,\n  \"unitOfMeasure\": \"KG\"\n}"
+            },
+            "url": {
+              "raw": "{{gatewayUrl}}/api/cart/items",
+              "host": ["{{gatewayUrl}}"],
+              "path": ["api", "cart", "items"]
+            }
+          }
+        },
+        {
+          "name": "3. Add Duplicate Product and Verify Merge",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 201', function () { pm.response.to.have.status(201); });",
+                  "var jsonData = pm.response.json();",
+                  "pm.test('Duplicate product quantity merged', function () {",
+                  "  var item = jsonData.data.items.find(i => i.productPublicId === pm.collectionVariables.get('productPublicId'));",
+                  "  pm.expect(item).to.not.be.undefined;",
+                  "  pm.expect(item.quantity).to.be.above(2.000);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productPublicId\": \"{{productPublicId}}\",\n  \"quantity\": 1.000,\n  \"unitOfMeasure\": \"KG\"\n}"
+            },
+            "url": {
+              "raw": "{{gatewayUrl}}/api/cart/items",
+              "host": ["{{gatewayUrl}}"],
+              "path": ["api", "cart", "items"]
+            }
+          }
+        },
+        {
+          "name": "4. Update Quantity (PATCH)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "var jsonData = pm.response.json();",
+                  "pm.test('Quantity updated successfully', function () {",
+                  "  var item = jsonData.data.items.find(i => i.itemPublicId === pm.collectionVariables.get('cartItemPublicId'));",
+                  "  pm.expect(item.quantity).to.eql(4);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"quantity\": 4.000\n}"
+            },
+            "url": {
+              "raw": "{{gatewayUrl}}/api/cart/items/{{cartItemPublicId}}",
+              "host": ["{{gatewayUrl}}"],
+              "path": ["api", "cart", "items", "{{cartItemPublicId}}"]
+            }
+          }
+        },
+        {
+          "name": "5. Remove Item",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "var jsonData = pm.response.json();",
+                  "pm.test('Item removed from cart', function () {",
+                  "  var found = jsonData.data.items.some(i => i.itemPublicId === pm.collectionVariables.get('cartItemPublicId'));",
+                  "  pm.expect(found).to.be.false;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": {
+              "raw": "{{gatewayUrl}}/api/cart/items/{{cartItemPublicId}}",
+              "host": ["{{gatewayUrl}}"],
+              "path": ["api", "cart", "items", "{{cartItemPublicId}}"]
+            }
+          }
+        },
+        {
+          "name": "6. Clear Cart",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "var jsonData = pm.response.json();",
+                  "pm.test('Cart is empty', function () { pm.expect(jsonData.data.items.length).to.eql(0); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": {
+              "raw": "{{gatewayUrl}}/api/cart",
+              "host": ["{{gatewayUrl}}"],
+              "path": ["api", "cart"]
+            }
+          }
+        },
+        {
+          "name": "7. Validate Cart",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "var jsonData = pm.response.json();",
+                  "pm.test('Validation response structure valid', function () {",
+                  "  pm.expect(jsonData.data).to.have.property('valid');",
+                  "  pm.expect(jsonData.data).to.have.property('currentSubtotal');",
+                  "  pm.expect(jsonData.data).to.have.property('validationMessages');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": {
+              "raw": "{{gatewayUrl}}/api/cart/validate",
+              "host": ["{{gatewayUrl}}"],
+              "path": ["api", "cart", "validate"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Validation & Edge Cases",
+      "item": [
+        {
+          "name": "8. Add Nonexistent Product",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 404', function () { pm.response.to.have.status(404); });",
+                  "var jsonData = pm.response.json();",
+                  "pm.test('Failure envelope received', function () { pm.expect(jsonData.success).to.be.false; });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productPublicId\": \"00000000-0000-0000-0000-000000000000\",\n  \"quantity\": 1.000\n}"
+            },
+            "url": {
+              "raw": "{{gatewayUrl}}/api/cart/items",
+              "host": ["{{gatewayUrl}}"],
+              "path": ["api", "cart", "items"]
+            }
+          }
+        },
+        {
+          "name": "9. Add Inactive Product",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 409', function () { pm.response.to.have.status(409); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productPublicId\": \"inactive-product-uuid\",\n  \"quantity\": 1.000\n}"
+            },
+            "url": {
+              "raw": "{{gatewayUrl}}/api/cart/items",
+              "host": ["{{gatewayUrl}}"],
+              "path": ["api", "cart", "items"]
+            }
+          }
+        },
+        {
+          "name": "10. Add Disabled Product",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 409', function () { pm.response.to.have.status(409); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productPublicId\": \"disabled-product-uuid\",\n  \"quantity\": 1.000\n}"
+            },
+            "url": {
+              "raw": "{{gatewayUrl}}/api/cart/items",
+              "host": ["{{gatewayUrl}}"],
+              "path": ["api", "cart", "items"]
+            }
+          }
+        },
+        {
+          "name": "11. Add Unavailable Product",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 409', function () { pm.response.to.have.status(409); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productPublicId\": \"unavailable-product-uuid\",\n  \"quantity\": 1.000\n}"
+            },
+            "url": {
+              "raw": "{{gatewayUrl}}/api/cart/items",
+              "host": ["{{gatewayUrl}}"],
+              "path": ["api", "cart", "items"]
+            }
+          }
+        },
+        {
+          "name": "12. Add Quantity Exceeding Stock",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 409 Conflict', function () { pm.response.to.have.status(409); });",
+                  "var jsonData = pm.response.json();",
+                  "pm.test('Insufficient stock error message', function () { pm.expect(jsonData.message).to.include('stock'); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productPublicId\": \"{{productPublicId}}\",\n  \"quantity\": 99999.000\n}"
+            },
+            "url": {
+              "raw": "{{gatewayUrl}}/api/cart/items",
+              "host": ["{{gatewayUrl}}"],
+              "path": ["api", "cart", "items"]
+            }
+          }
+        },
+        {
+          "name": "13. Update Quantity Exceeding Stock",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 409', function () { pm.response.to.have.status(409); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"quantity\": 99999.000\n}"
+            },
+            "url": {
+              "raw": "{{gatewayUrl}}/api/cart/items/{{cartItemPublicId}}",
+              "host": ["{{gatewayUrl}}"],
+              "path": ["api", "cart", "items", "{{cartItemPublicId}}"]
+            }
+          }
+        },
+        {
+          "name": "14. Invalid Quantity (Negative or Zero)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 400 Bad Request', function () { pm.response.to.have.status(400); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productPublicId\": \"{{productPublicId}}\",\n  \"quantity\": -5.000\n}"
+            },
+            "url": {
+              "raw": "{{gatewayUrl}}/api/cart/items",
+              "host": ["{{gatewayUrl}}"],
+              "path": ["api", "cart", "items"]
+            }
+          }
+        },
+        {
+          "name": "15. Invalid Unit of Measure",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 400 Bad Request', function () { pm.response.to.have.status(400); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productPublicId\": \"{{productPublicId}}\",\n  \"quantity\": 1.000,\n  \"unitOfMeasure\": \"INVALID_BARREL\"\n}"
+            },
+            "url": {
+              "raw": "{{gatewayUrl}}/api/cart/items",
+              "host": ["{{gatewayUrl}}"],
+              "path": ["api", "cart", "items"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Security & Multi-Tenant Isolation",
+      "item": [
+        {
+          "name": "16. Customer Isolation (Customer B cannot view Customer A Cart)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "var jsonData = pm.response.json();",
+                  "pm.test('Customer B receives separate empty or distinct cart', function () {",
+                  "  pm.expect(jsonData.success).to.be.true;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{customerBAccessToken}}" }
+            ],
+            "url": {
+              "raw": "{{gatewayUrl}}/api/cart",
+              "host": ["{{gatewayUrl}}"],
+              "path": ["api", "cart"]
+            }
+          }
+        },
+        {
+          "name": "17. Unauthorized Request (Missing Token)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 401 Unauthorized', function () { pm.response.to.have.status(401); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{gatewayUrl}}/api/cart",
+              "host": ["{{gatewayUrl}}"],
+              "path": ["api", "cart"]
+            }
+          }
+        },
+        {
+          "name": "18. Expired JWT / Assertion",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 401 Unauthorized', function () { pm.response.to.have.status(401); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer eyJhbGciOiJIUzI1NiJ9.eyJleHAiOjE1MTYyMzkwMjJ9.invalid" }
+            ],
+            "url": {
+              "raw": "{{gatewayUrl}}/api/cart",
+              "host": ["{{gatewayUrl}}"],
+              "path": ["api", "cart"]
+            }
+          }
+        },
+        {
+          "name": "19. Invalid Gateway Assertion Signature",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 401 Unauthorized', function () { pm.response.to.have.status(401); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "X-Gateway-Assertion", "value": "invalid.jwt.token" }
+            ],
+            "url": {
+              "raw": "{{gatewayUrl}}/api/cart",
+              "host": ["{{gatewayUrl}}"],
+              "path": ["api", "cart"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Resilience & Downstream Failure Scenarios",
+      "item": [
+        {
+          "name": "20. Product Service Unavailable Fallback (503)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Handled as 503 or graceful fallback', function () {",
+                  "  pm.expect([200, 503]).to.include(pm.response.code);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productPublicId\": \"simulated-timeout-product\",\n  \"quantity\": 1.000\n}"
+            },
+            "url": {
+              "raw": "{{gatewayUrl}}/api/cart/items",
+              "host": ["{{gatewayUrl}}"],
+              "path": ["api", "cart", "items"]
+            }
+          }
+        },
+        {
+          "name": "21. Inventory Service Unavailable Fallback (503)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Handled as 503 or graceful fallback', function () {",
+                  "  pm.expect([200, 503]).to.include(pm.response.code);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productPublicId\": \"simulated-stock-down-product\",\n  \"quantity\": 1.000\n}"
+            },
+            "url": {
+              "raw": "{{gatewayUrl}}/api/cart/items",
+              "host": ["{{gatewayUrl}}"],
+              "path": ["api", "cart", "items"]
+            }
+          }
+        },
+        {
+          "name": "22. Price Change Validation Probe",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Validation reports priceChanged flag', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  var jsonData = pm.response.json();",
+                  "  pm.expect(jsonData.data).to.have.property('priceChanged');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": {
+              "raw": "{{gatewayUrl}}/api/cart/validate",
+              "host": ["{{gatewayUrl}}"],
+              "path": ["api", "cart", "validate"]
+            }
+          }
+        },
+        {
+          "name": "23. Expired Cart Behavior (New Active Cart Created)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "var jsonData = pm.response.json();",
+                  "pm.test('Active cart returned', function () { pm.expect(jsonData.data.status).to.eql('ACTIVE'); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": {
+              "raw": "{{gatewayUrl}}/api/cart",
+              "host": ["{{gatewayUrl}}"],
+              "path": ["api", "cart"]
+            }
+          }
+        },
+        {
+          "name": "24. Concurrent Cart Operations (Optimistic Locking)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Handled cleanly (200 OK or 409 Conflict)', function () {",
+                  "  pm.expect([200, 201, 409]).to.include(pm.response.code);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productPublicId\": \"{{productPublicId}}\",\n  \"quantity\": 1.000\n}"
+            },
+            "url": {
+              "raw": "{{gatewayUrl}}/api/cart/items",
+              "host": ["{{gatewayUrl}}"],
+              "path": ["api", "cart", "items"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

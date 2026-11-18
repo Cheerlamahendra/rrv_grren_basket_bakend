@@ -18,6 +18,17 @@ spring:
     username: ${MYSQL_USER:root}
     password: ${MYSQL_PASSWORD:mahendra}
     driver-class-name: com.mysql.cj.jdbc.Driver
+  #spring:
+    #datasource:
+      #url: jdbc:mysql://${DB_HOST:rrv-basket-db.c3a6eqkeep7i.ap-southeast-2.rds.amazonaws.com}:${DB_PORT:3306}/auth_db?useSSL=true&serverTimezone=UTC
+      #username: ${MYSQL_USER:admin}
+      #password: ${MYSQL_PASSWORD:rrv_basket_2026}
+      #driver-class-name: com.mysql.cj.jdbc.Driver
+
+    #jpa:
+      #hibernate:
+        #ddl-auto: validate
+      #show-sql: false
 
     hikari:
       maximum-pool-size: 10
@@ -49,7 +60,7 @@ eureka:
 
   instance:
     prefer-ip-address: true
-    ip-address: 192.168.0.107
+    ip-address: 192.168.0.101
     instance-id: ${spring.application.name}:${server.port}
 
 management:

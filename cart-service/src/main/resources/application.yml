@@ -1,3 +1,5 @@
+server:
+  port: 8086
 
 spring:
   application:
@@ -7,4 +9,88 @@ spring:
     active: dev
 
   config:
-    import: "configserver:http://localhost:8888"
+    import: "optional:configserver:http://localhost:8888"
+
+  cloud:
+    config:
+      fail-fast: false
+
+  datasource:
+    url: ${CART_DB_URL:jdbc:mysql://localhost:3306/cart_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&createDatabaseIfNotExist=true}
+    username: ${MYSQL_USER:root}
+    password: ${MYSQL_PASSWORD:mahendra}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 5
+      idle-timeout: 300000
+      connection-timeout: 20000
+      max-lifetime: 1200000
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.MySQLDialect
+
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    locations: classpath:db/migration
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+    register-with-eureka: true
+    fetch-registry: true
+  instance:
+    prefer-ip-address: true
+    instance-id: ${spring.application.name}:${server.port}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true
+
+cart:
+  expiration:
+    duration-days: 7
+    cleanup-interval-ms: 3600000
+    batch-size: 100
+
+app:
+  services:
+    auth-service-url: ${AUTH_SERVICE_URL:http://localhost:8081}
+    product-service-url: ${PRODUCT_SERVICE_URL:http://localhost:8084}
+    inventory-service-url: ${INVENTORY_SERVICE_URL:http://localhost:8085}
+
+  client:
+    connect-timeout-ms: 2000
+    read-timeout-ms: 3000
+
+  jwt:
+    issuer: rrv-gateway
+
+  security:
+    internal-service-id: cart-service
+    internal-service-secret: ${INTERNAL_SERVICE_SECRET:c8f7e2d1a5b49382716054321fedcba9876543210abcdef0123456789abcdef0}
+    gateway-audience: rrv-internal-services
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    tags-sorter: alpha
+    operations-sorter: method

@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -22,7 +23,7 @@ import java.util.Map;
  * Prevents raw stack traces or default Spring error pages from leaking to clients.
  * Wraps all failures inside standard {@link ApiResponse} envelopes with HTTP status codes.
  */
-@RestControllerAdvice
+@RestControllerAdvice(basePackages = "com.rrvgreenbasket.discovery.controller")
 public class GlobalExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
@@ -34,6 +35,17 @@ public class GlobalExceptionHandler {
         Map<String, String> details = new HashMap<>();
         details.put("path", request.getDescription(false).replace("uri=", ""));
         return new ResponseEntity<>(ApiResponse.error(ex.getMessage(), details), HttpStatus.NOT_FOUND);
+    }
+
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<ApiResponse<Map<String, String>>> handleNoResourceFoundException(
+            NoResourceFoundException ex, WebRequest request) {
+        log.debug("Resource not found: {}", ex.getResourcePath());
+        Map<String, String> details = new HashMap<>();
+        details.put("path", request.getDescription(false).replace("uri=", ""));
+        return new ResponseEntity<>(
+                ApiResponse.error("Resource not found: " + ex.getResourcePath(), details),
+                HttpStatus.NOT_FOUND);
     }
 
     @ExceptionHandler(Exception.class)

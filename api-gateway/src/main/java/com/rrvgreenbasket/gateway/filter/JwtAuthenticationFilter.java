@@ -99,9 +99,16 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
         this.signatureUtil = signatureUtil;
         this.objectMapper = objectMapper;
         this.authServiceBaseUrl = authServiceBaseUrl.replaceAll("/+$", "");
+        String resolvedBaseUrl = this.authServiceBaseUrl.replace("localhost", "127.0.0.1");
         this.internalSecret = internalSecret;
         this.serviceId = serviceId;
-        this.webClient = webClientBuilder.baseUrl(this.authServiceBaseUrl).build();
+        this.webClient = webClientBuilder.baseUrl(resolvedBaseUrl).build();
+    }
+
+    private enum SessionValidationResult {
+        ACTIVE,
+        REVOKED,
+        ERROR
     }
 
     @Override
@@ -144,18 +151,22 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
 
         // 6. Real-time Session Revocation Check
         if (sessionId != null && !sessionId.isBlank()) {
-            if (revokedSessionSet.contains(sessionId)) {
-                log.warn("Immediate edge rejection: Session '{}' is in local revoked session set", sessionId);
-                return onError(exchange, "Session has been revoked or invalidated.", HttpStatus.UNAUTHORIZED);
-            }
-
             return validateSessionWithAuthService(sessionId)
-                    .flatMap(isValid -> {
-                        if (!isValid) {
+                    .flatMap(result -> {
+                        if (result == SessionValidationResult.REVOKED) {
                             revokedSessionSet.add(sessionId);
-                            log.warn("Session '{}' reported INVALID/REVOKED by Auth Service", sessionId);
+                            log.warn("[GatewayAuth] Session '{}' reported INVALID/REVOKED by Auth Service", sessionId);
                             return onError(exchange, "Session has been revoked or invalidated.", HttpStatus.UNAUTHORIZED);
+                        } else if (result == SessionValidationResult.ERROR) {
+                            log.warn("[GatewayAuth] Auth Service unreachable/timed out during session check for session: {}", sessionId);
+                            return onError(exchange, "Authentication service is temporarily unavailable. Please retry shortly.", HttpStatus.SERVICE_UNAVAILABLE);
                         }
+
+                        log.info("[GatewayAuth] Request path: {}", path);
+                        log.info("[GatewayAuth] Customer JWT validated: true");
+                        log.info("[GatewayAuth] Session ID present: true");
+                        log.info("[GatewayAuth] Session active: true");
+                        log.info("[GatewayAuth] Gateway assertion generated: true");
 
                         // Generate Short-Lived Gateway Assertion JWT
                         String assertionJwt = assertionUtil.generateAssertion(
@@ -181,11 +192,16 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
                                     if (path.contains("/logout") && exchange.getResponse().getStatusCode() != null
                                             && exchange.getResponse().getStatusCode().is2xxSuccessful()) {
                                         revokedSessionSet.add(sessionId);
-                                        log.info("Immediate invalidation: Added session '{}' to revokedSessionSet upon logout", sessionId);
+                                        log.info("[GatewayAuth] Immediate invalidation: Added session '{}' to revokedSessionSet upon logout", sessionId);
                                     }
                                 }));
                     });
         }
+
+        log.info("[GatewayAuth] Request path: {}", path);
+        log.info("[GatewayAuth] Customer JWT validated: true");
+        log.info("[GatewayAuth] Session ID present: false");
+        log.info("[GatewayAuth] Gateway assertion generated: true");
 
         // For tokens without sid (legacy), proceed with generated assertion
         String assertionJwt = assertionUtil.generateAssertion(userId, role, "", method != null ? method.name() : "GET", path, "");
@@ -199,7 +215,7 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
         return chain.filter(exchange.mutate().request(mutatedRequest).build());
     }
 
-    private Mono<Boolean> validateSessionWithAuthService(String sessionId) {
+    private Mono<SessionValidationResult> validateSessionWithAuthService(String sessionId) {
         String path = "/api/auth/internal/sessions/" + sessionId + "/validate";
         long timestamp = System.currentTimeMillis();
         String nonce = UUID.randomUUID().toString();
@@ -220,15 +236,17 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
                 .map(json -> {
                     try {
                         JsonNode root = objectMapper.readTree(json);
-                        return root.path("valid").asBoolean(false);
+                        boolean isValid = root.path("valid").asBoolean(false);
+                        log.debug("[GatewayAuth] Session validation response for sid='{}': valid={}", sessionId, isValid);
+                        return isValid ? SessionValidationResult.ACTIVE : SessionValidationResult.REVOKED;
                     } catch (Exception e) {
-                        log.error("Failed to parse session validation JSON: {}", e.getMessage());
-                        return false;
+                        log.error("[GatewayAuth] Failed to parse session validation JSON: {}", e.getMessage());
+                        return SessionValidationResult.REVOKED;
                     }
                 })
                 .onErrorResume(ex -> {
-                    log.error("Auth Service session validation call failed: {}", ex.getMessage());
-                    return Mono.just(false);
+                    log.error("[GatewayAuth] Auth Service session validation call failed: {}", ex.getMessage());
+                    return Mono.just(SessionValidationResult.ERROR);
                 });
     }
 

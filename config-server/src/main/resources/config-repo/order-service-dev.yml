@@ -3,20 +3,65 @@
 # ==============================================================================
 
 server:
-  port: 8088
+  port: 8091
 
 spring:
+  application:
+    name: order-service
+
   datasource:
-    url: jdbc:mysql://localhost:3306/order_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+    url: jdbc:mysql://localhost:3306/order_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&createDatabaseIfNotExist=true
     username: ${MYSQL_USER:root}
     password: ${MYSQL_PASSWORD:root}
     driver-class-name: com.mysql.cj.jdbc.Driver
 
-# Order Cutoff & Packaging Rules
-order:
-  daily-cutoff-hour: 22 # 10:00 PM cutoff for next morning delivery
-  minimum-order-value: 200.00
-  packaging-charge: 25.00
-  free-delivery-threshold: 500.00
-  default-delivery-charge: 40.00
-  checkout-saga-timeout-seconds: 30
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQLDialect
+        format_sql: true
+    show-sql: false
+
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    locations: classpath:db/migration
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+    register-with-eureka: true
+    fetch-registry: true
+  instance:
+    prefer-ip-address: true
+    lease-renewal-interval-in-seconds: 10
+    lease-expiration-duration-in-seconds: 30
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always
+
+app:
+  jwt:
+    issuer: rrv-gateway
+  security:
+    internal-service-secret: ${INTERNAL_SERVICE_SECRET:c8f7e2d1a5b49382716054321fedcba9876543210abcdef0123456789abcdef0}
+    internal-service-id: order-service
+    gateway-audience: rrv-internal-services
+  services:
+    cart-service-url: ${CART_SERVICE_URL:http://localhost:8086}
+    product-service-url: ${PRODUCT_SERVICE_URL:http://localhost:8084}
+    inventory-service-url: ${INVENTORY_SERVICE_URL:http://localhost:8085}
+    delivery-service-url: ${DELIVERY_SERVICE_URL:http://localhost:8094}
+    customer-service-url: ${CUSTOMER_SERVICE_URL:http://localhost:8082}
+  client:
+    connect-timeout-ms: 3000
+    read-timeout-ms: 5000

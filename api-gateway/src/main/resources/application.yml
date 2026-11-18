@@ -24,7 +24,11 @@ spring:
           '[/**]':
             allowedOriginPatterns:
               - 'http://localhost:3000'
-              - "http://192.168.0.172:3000"
+              - "http://192.168.0.103:3000"
+              - "http://192.168.0.143:3000"
+              - "http://192.168.0.138:3000"
+              - "http://192.168.0.162:3000"
+              - "http://192.168.0.139:3000"
             allowedMethods:
               - GET
               - POST
@@ -130,6 +134,12 @@ spring:
           predicates:
             - Path=/api/orders/**
 
+        # 8.5 Order Service Admin Routes
+        - id: order-service-admin
+          uri: lb://ORDER-SERVICE
+          predicates:
+            - Path=/api/admin/orders/**
+
         # 9. Procurement Service Routes (Daily Mandi POs)
         - id: procurement-service
           uri: lb://PROCUREMENT-SERVICE
@@ -147,6 +157,12 @@ spring:
           uri: lb://DELIVERY-SERVICE
           predicates:
             - Path=/api/delivery/**
+
+        # 11.5 Delivery Service Admin Routes
+        - id: delivery-service-admin
+          uri: lb://DELIVERY-SERVICE
+          predicates:
+            - Path=/api/admin/delivery/**
 
         # 12. Payment Service Customer Routes
         - id: payment-service

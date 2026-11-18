@@ -1,0 +1,56 @@
+server:
+  port: 0
+
+spring:
+  application:
+    name: delivery-service
+  cloud:
+    config:
+      enabled: false
+
+  datasource:
+    url: jdbc:h2:mem:delivery_db;MODE=MySQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ""
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+    show-sql: false
+
+  flyway:
+    enabled: false
+
+eureka:
+  client:
+    enabled: false
+    register-with-eureka: false
+    fetch-registry: false
+
+app:
+  jwt:
+    issuer: rrv-gateway
+  security:
+    internal-service-secret: c8f7e2d1a5b49382716054321fedcba9876543210abcdef0123456789abcdef0
+    internal-service-id: delivery-service
+    gateway-audience: rrv-internal-services
+
+google:
+  maps:
+    server-api-key: test-google-maps-server-key-xyz
+    browser-api-key: test-google-maps-browser-key-xyz
+    places-enabled: true
+    geocoding-enabled: true
+    routes-enabled: true
+    connect-timeout-ms: 3000
+    read-timeout-ms: 3000
+
+delivery:
+  default-currency: INR
+  default-country: India
+  default-country-code: IN
+  default-maximum-distance-meters: 5000

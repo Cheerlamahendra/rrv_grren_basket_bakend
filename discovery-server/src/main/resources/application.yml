@@ -27,7 +27,7 @@ spring:
 eureka:
   instance:
     hostname: localhost
-    prefer-ip-address: true
+    prefer-ip-address: false
   client:
     register-with-eureka: false
     fetch-registry: false
@@ -38,6 +38,8 @@ eureka:
     eviction-interval-timer-in-ms: 5000
     response-cache-update-interval-ms: 3000
     renewal-percent-threshold: 0.85
+    peer-node-read-timeout-ms: 5000
+    peer-node-connect-timeout-ms: 5000
 
 # ==============================================================================
 # Spring Boot Actuator Endpoints for Health Checks and Observability
