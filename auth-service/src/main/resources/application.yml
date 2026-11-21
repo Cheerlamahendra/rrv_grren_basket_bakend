@@ -1,4 +1,4 @@
-
+﻿
 server:
   port: 8081
 
@@ -60,7 +60,6 @@ eureka:
 
   instance:
     prefer-ip-address: true
-    ip-address: 192.168.0.101
     instance-id: ${spring.application.name}:${server.port}
 
 management:
@@ -75,7 +74,7 @@ management:
 
 app:
   jwt:
-    secret: ${JWT_SECRET:404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
+    secret: ${JWT_SECRET:}
     access-token-expiration-ms: 1800000
     refresh-token-expiration-ms: 604800000
     issuer: rrv-green-basket-auth
@@ -88,7 +87,7 @@ app:
   security:
     admin-max-failed-attempts: 5
     admin-lockout-duration-minutes: 15
-    internal-service-secret: ${INTERNAL_SERVICE_SECRET:c8f7e2d1a5b49382716054321fedcba9876543210abcdef0123456789abcdef0}
+    internal-service-secret: ${INTERNAL_SERVICE_SECRET:}
     internal-service-id: auth-service
     authorized-internal-services: api-gateway,customer-service,order-service,product-service
 
@@ -100,9 +99,10 @@ app:
     customer-service-url: ${CUSTOMER_SERVICE_URL:http://localhost:8082}
 
   email:
-    provider: mock
-    api-url: ""
-    api-key: ""
+    provider: resend
+    api-url: https://api.resend.com/emails
+    api-key: ${RESEND_API_KEY}
+    from-email: "RRV Green Basket <onboarding@resend.dev>"
 
 springdoc:
   api-docs:

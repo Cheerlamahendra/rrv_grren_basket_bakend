@@ -49,7 +49,7 @@ class ProductServiceClientTests {
         productServiceClient = new ProductServiceClientImpl(
                 restTemplate,
                 "http://localhost:8084",
-                "c8f7e2d1a5b49382716054321fedcba9876543210abcdef0123456789abcdef0",
+                "RQpmB5hGO2NsLNE7OnwXo5NfNtEJj+j+461g0oEeGunJPZ4iYQEGr+uk5M3hAfgDg26IDtmA9N2RJbFXkCLrqQ==",
                 false, // mock fallback disabled to test real downstream error handling
                 objectMapper
         );

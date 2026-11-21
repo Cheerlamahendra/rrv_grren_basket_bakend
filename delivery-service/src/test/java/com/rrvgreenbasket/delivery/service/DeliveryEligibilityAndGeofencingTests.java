@@ -167,6 +167,103 @@ class DeliveryEligibilityAndGeofencingTests {
     }
 
     @Test
+    @DisplayName("Eligibility - 7,093 meters road distance is ELIGIBLE under 15 km store radius (Charge ₹45)")
+    void test7093MetersEligibleUnder15KmStore() {
+        StoreLocation store15km = StoreLocation.builder()
+                .publicId("store-kurnool-primary")
+                .storeName("RRV Green Basket - Kurnool Central")
+                .latitude(15.8281)
+                .longitude(78.0373)
+                .maximumDeliveryDistanceMeters(15000)
+                .deliveryEnabled(true)
+                .primaryStore(true)
+                .currency("INR")
+                .build();
+
+        when(storeLocationService.getPrimaryStore()).thenReturn(store15km);
+        when(googleRoutesService.computeRoute(anyDouble(), anyDouble(), anyDouble(), anyDouble()))
+                .thenReturn(new RouteResult(7093, 7.09, "1200s"));
+        when(deliveryPricingService.calculateDeliveryCharge(7093)).thenReturn(new BigDecimal("45.00"));
+
+        CheckDeliveryAvailabilityRequest request = CheckDeliveryAvailabilityRequest.builder()
+                .latitude(15.8800)
+                .longitude(78.0900)
+                .build();
+
+        DeliveryAvailabilityResponse response = eligibilityService.checkAvailability(request);
+
+        assertThat(response.isAvailable()).isTrue();
+        assertThat(response.getDistanceMeters()).isEqualTo(7093);
+        assertThat(response.getDistanceKm()).isEqualTo(7.09);
+        assertThat(response.getDeliveryCharge()).isEqualByComparingTo(new BigDecimal("45.00"));
+        assertThat(response.getMaximumDeliveryDistanceKm()).isEqualTo(15.0);
+    }
+
+    @Test
+    @DisplayName("Eligibility - 7,207 meters road distance is ELIGIBLE under 15 km store radius (Charge ₹45)")
+    void test7207MetersEligibleUnder15KmStore() {
+        StoreLocation store15km = StoreLocation.builder()
+                .publicId("store-kurnool-primary")
+                .storeName("RRV Green Basket - Kurnool Central")
+                .latitude(15.8281)
+                .longitude(78.0373)
+                .maximumDeliveryDistanceMeters(15000)
+                .deliveryEnabled(true)
+                .primaryStore(true)
+                .currency("INR")
+                .build();
+
+        when(storeLocationService.getPrimaryStore()).thenReturn(store15km);
+        when(googleRoutesService.computeRoute(anyDouble(), anyDouble(), anyDouble(), anyDouble()))
+                .thenReturn(new RouteResult(7207, 7.21, "1250s"));
+        when(deliveryPricingService.calculateDeliveryCharge(7207)).thenReturn(new BigDecimal("45.00"));
+
+        CheckDeliveryAvailabilityRequest request = CheckDeliveryAvailabilityRequest.builder()
+                .latitude(15.8850)
+                .longitude(78.0950)
+                .build();
+
+        DeliveryAvailabilityResponse response = eligibilityService.checkAvailability(request);
+
+        assertThat(response.isAvailable()).isTrue();
+        assertThat(response.getDistanceMeters()).isEqualTo(7207);
+        assertThat(response.getDistanceKm()).isEqualTo(7.21);
+        assertThat(response.getDeliveryCharge()).isEqualByComparingTo(new BigDecimal("45.00"));
+    }
+
+    @Test
+    @DisplayName("Eligibility - Distances greater than 15,000 meters are unavailable according to store radius")
+    void test15001MetersIneligibleUnder15KmStore() {
+        StoreLocation store15km = StoreLocation.builder()
+                .publicId("store-kurnool-primary")
+                .storeName("RRV Green Basket - Kurnool Central")
+                .latitude(15.8281)
+                .longitude(78.0373)
+                .maximumDeliveryDistanceMeters(15000)
+                .deliveryEnabled(true)
+                .primaryStore(true)
+                .currency("INR")
+                .build();
+
+        when(storeLocationService.getPrimaryStore()).thenReturn(store15km);
+        when(googleRoutesService.computeRoute(anyDouble(), anyDouble(), anyDouble(), anyDouble()))
+                .thenReturn(new RouteResult(15001, 15.00, "2500s"));
+
+        CheckDeliveryAvailabilityRequest request = CheckDeliveryAvailabilityRequest.builder()
+                .latitude(15.9800)
+                .longitude(78.1900)
+                .build();
+
+        DeliveryAvailabilityResponse response = eligibilityService.checkAvailability(request);
+
+        assertThat(response.isAvailable()).isFalse();
+        assertThat(response.getDistanceMeters()).isEqualTo(15001);
+        assertThat(response.getDeliveryCharge()).isNull();
+        assertThat(response.getMessage()).contains("currently deliver only within 15.0 km of our store");
+        verify(deliveryPricingService, never()).calculateDeliveryCharge(anyInt());
+    }
+
+    @Test
     @DisplayName("Eligibility - Place ID verification workflow followed by eligibility check")
     void testPlaceIdEligibilityWorkflow() {
         when(storeLocationService.getPrimaryStore()).thenReturn(primaryStore);

@@ -7,6 +7,7 @@ import com.rrvgreenbasket.payment.dto.response.ApiResponse;
 import com.rrvgreenbasket.payment.exception.OrderNotFoundException;
 import com.rrvgreenbasket.payment.exception.OrderServiceUnavailableException;
 import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
@@ -14,6 +15,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.http.*;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.ResourceAccessException;
@@ -42,7 +44,7 @@ public class OrderServiceClientImpl implements OrderServiceClient {
     public OrderServiceClientImpl(
             RestTemplateBuilder restTemplateBuilder,
             @Value("${app.services.order-service-url:http://localhost:8088}") String orderServiceUrl,
-            @Value("${app.security.internal-service-secret:c8f7e2d1a5b49382716054321fedcba9876543210abcdef0123456789abcdef0}") String internalSecret,
+            @Value("${app.security.internal-service-secret:RQpmB5hGO2NsLNE7OnwXo5NfNtEJj+j+461g0oEeGunJPZ4iYQEGr+uk5M3hAfgDg26IDtmA9N2RJbFXkCLrqQ==}") String internalSecret,
             @Value("${app.services.order-service.mock-fallback-enabled:true}") boolean mockFallbackEnabled,
             ObjectMapper objectMapper) {
 
@@ -54,11 +56,13 @@ public class OrderServiceClientImpl implements OrderServiceClient {
         this.objectMapper = objectMapper;
         this.mockFallbackEnabled = mockFallbackEnabled;
 
-        byte[] keyBytes = internalSecret.getBytes(StandardCharsets.UTF_8);
-        if (keyBytes.length < 32) {
-            byte[] padded = new byte[32];
-            System.arraycopy(keyBytes, 0, padded, 0, keyBytes.length);
-            keyBytes = padded;
+        if (!StringUtils.hasText(internalSecret)) {
+            throw new IllegalStateException("Internal service secret is missing. Set app.security.internal-service-secret or INTERNAL_SERVICE_SECRET.");
+        }
+
+        byte[] keyBytes = Decoders.BASE64.decode(internalSecret.trim());
+        if (keyBytes.length < 64) {
+            throw new IllegalStateException("Gateway assertion secret must contain at least 64 bytes (512 bits) for HS512 algorithm. Current key size: " + (keyBytes.length * 8) + " bits");
         }
         this.internalKey = Keys.hmacShaKeyFor(keyBytes);
     }
@@ -167,7 +171,7 @@ public class OrderServiceClientImpl implements OrderServiceClient {
                 .id(UUID.randomUUID().toString())
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + 60_000))
-                .signWith(internalKey)
+                .signWith(internalKey, Jwts.SIG.HS512)
                 .compact();
     }
 

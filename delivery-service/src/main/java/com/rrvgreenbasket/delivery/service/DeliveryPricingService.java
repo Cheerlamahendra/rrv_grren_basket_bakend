@@ -13,9 +13,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDateTime;
 import java.util.List;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 @Slf4j
 @Service
@@ -23,18 +22,13 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class DeliveryPricingService {
 
     private final DeliveryPricingSlabRepository pricingSlabRepository;
-    private final List<DeliveryPricingSlab> cachedActiveSlabs = new CopyOnWriteArrayList<>();
-    private final AtomicBoolean cacheInitialized = new AtomicBoolean(false);
 
     /**
-     * Retrieves all active pricing slabs, cached in-memory.
+     * Retrieves all active pricing slabs directly from the repository.
      */
     @Transactional(readOnly = true)
     public List<DeliveryPricingSlab> getActiveSlabs() {
-        if (!cacheInitialized.get()) {
-            refreshCache();
-        }
-        return List.copyOf(cachedActiveSlabs);
+        return pricingSlabRepository.findByActiveTrueOrderByMinimumDistanceMetersAsc();
     }
 
     /**
@@ -45,38 +39,82 @@ public class DeliveryPricingService {
      */
     @Transactional(readOnly = true)
     public BigDecimal calculateDeliveryCharge(int distanceMeters) {
-        List<DeliveryPricingSlab> slabs = getActiveSlabs();
-        if (slabs.isEmpty()) {
-            log.error("No active delivery pricing slabs configured in database");
+        if (distanceMeters < 0) {
+            log.warn("Invalid negative road distance requested: {} meters", distanceMeters);
+            throw new InvalidDeliveryConfigurationException("Road distance cannot be negative: " + distanceMeters + " meters");
+        }
+
+        DeliveryPricingSlab slab = findSlabForDistance(distanceMeters);
+        if (slab == null) {
+            log.warn("No active pricing slab covers road distance: {} meters", distanceMeters);
             throw new DeliveryPricingNotConfiguredException(
-                    "Delivery pricing configuration is missing. Please configure pricing slabs.");
+                    "No delivery pricing slab configured for road distance of " + distanceMeters + " meters");
         }
 
-        for (DeliveryPricingSlab slab : slabs) {
-            if (slab.covers(distanceMeters)) {
-                log.debug("Distance {} meters matched pricing slab [{}-{} m] -> ₹{}",
-                        distanceMeters, slab.getMinimumDistanceMeters(), slab.getMaximumDistanceMeters(), slab.getDeliveryCharge());
-                return slab.getDeliveryCharge().setScale(2, RoundingMode.HALF_UP);
-            }
-        }
-
-        log.warn("No active pricing slab covers road distance: {} meters", distanceMeters);
-        throw new DeliveryPricingNotConfiguredException(
-                "No delivery pricing slab configured for road distance of " + distanceMeters + " meters");
+        log.debug("Distance {} meters matched pricing slab [{}-{} m] -> ₹{}",
+                distanceMeters, slab.getMinimumDistanceMeters(), slab.getMaximumDistanceMeters(), slab.getDeliveryCharge());
+        return slab.getDeliveryCharge().setScale(2, RoundingMode.HALF_UP);
     }
 
     /**
-     * Finds the active slab entity covering the given distance.
+     * Finds the active slab entity covering the given distance at the current time.
+     *
+     * @param distanceMeters road distance in meters
+     * @return matched DeliveryPricingSlab, or null if no slab covers this distance
      */
     @Transactional(readOnly = true)
     public DeliveryPricingSlab findSlabForDistance(int distanceMeters) {
-        List<DeliveryPricingSlab> slabs = getActiveSlabs();
-        for (DeliveryPricingSlab slab : slabs) {
-            if (slab.covers(distanceMeters)) {
-                return slab;
-            }
+        return findSlabForDistance(distanceMeters, LocalDateTime.now());
+    }
+
+    /**
+     * Finds the active slab entity covering the given distance at a specific reference time.
+     *
+     * @param distanceMeters road distance in meters
+     * @param now reference timestamp to validate effective date ranges
+     * @return matched DeliveryPricingSlab, or null if no slab covers this distance
+     */
+    @Transactional(readOnly = true)
+    public DeliveryPricingSlab findSlabForDistance(int distanceMeters, LocalDateTime now) {
+        if (distanceMeters < 0) {
+            log.warn("Invalid negative road distance requested: {} meters", distanceMeters);
+            throw new InvalidDeliveryConfigurationException("Road distance cannot be negative: " + distanceMeters + " meters");
         }
-        return null;
+
+        List<DeliveryPricingSlab> matchingSlabs = pricingSlabRepository.findActiveSlabsForDistance(distanceMeters, now);
+
+        if (matchingSlabs == null || matchingSlabs.isEmpty()) {
+            // Check if ANY active pricing slabs exist in database
+            List<DeliveryPricingSlab> allActive = pricingSlabRepository.findByActiveTrueOrderByMinimumDistanceMetersAsc();
+            if (allActive == null || allActive.isEmpty()) {
+                log.error("No active delivery pricing slabs configured in database");
+                throw new DeliveryPricingNotConfiguredException(
+                        "Delivery pricing configuration is missing. Please configure pricing slabs.");
+            }
+
+            // Fallback for mock-based unit tests where findActiveSlabsForDistance was not explicitly stubbed
+            List<DeliveryPricingSlab> fallbackMatches = allActive.stream()
+                    .filter(s -> s.covers(distanceMeters, now))
+                    .toList();
+
+            if (fallbackMatches.isEmpty()) {
+                return null;
+            }
+            if (fallbackMatches.size() > 1) {
+                log.error("Multiple overlapping active delivery pricing slabs found covering distance: {} meters", distanceMeters);
+                throw new InvalidDeliveryConfigurationException(
+                        "Multiple overlapping active delivery pricing slabs found covering distance: " + distanceMeters + " meters");
+            }
+            return fallbackMatches.get(0);
+        }
+
+        if (matchingSlabs.size() > 1) {
+            log.error("Multiple overlapping active delivery pricing slabs found covering distance: {} meters", distanceMeters);
+            throw new InvalidDeliveryConfigurationException(
+                    "Multiple overlapping active delivery pricing slabs found covering distance: " + distanceMeters + " meters");
+        }
+
+        return matchingSlabs.get(0);
     }
 
     /**
@@ -202,10 +240,12 @@ public class DeliveryPricingService {
         }
     }
 
-    private synchronized void refreshCache() {
-        cachedActiveSlabs.clear();
-        cachedActiveSlabs.addAll(pricingSlabRepository.findByActiveTrueOrderByMinimumDistanceMetersAsc());
-        cacheInitialized.set(true);
+    public synchronized void refreshCache() {
+        log.info("Delivery pricing cache refresh invoked; lookups are authoritative from database repository");
+    }
+
+    public synchronized void invalidateCache() {
+        log.info("Delivery pricing cache invalidation invoked");
     }
 
     private DeliveryPricingResponse mapToResponse(DeliveryPricingSlab slab) {

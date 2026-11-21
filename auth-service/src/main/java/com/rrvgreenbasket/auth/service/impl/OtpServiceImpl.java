@@ -108,6 +108,12 @@ public class OtpServiceImpl implements OtpService {
         // 2. Generate 6-digit numeric OTP
         int numericOtp = 100000 + SECURE_RANDOM.nextInt(900000);
         String rawOtp = String.valueOf(numericOtp);
+        // Print OTP in console
+        System.out.println("================================");
+        System.out.println("GENERATED OTP: " + rawOtp);
+        log.warn("GENERATED OTP:: {}", rawOtp);
+        System.out.println("================================");
+
         log.info("Generated OTP for {}: {}", maskMobile(normalizedMobile), rawOtp);
         // 3. BCrypt Hash OTP
         String otpHash = passwordEncoder.encode(rawOtp);
@@ -133,7 +139,7 @@ public class OtpServiceImpl implements OtpService {
                 .email(email != null && !email.isBlank() ? email.trim() : null)
                 .build();
         otpChallengeRepository.save(challenge);
-
+        log.warn("OTP BEFORE EMAIL DISPATCH: {}", rawOtp);
         // 6. Dispatch Notification via Provider
         emailProvider.sendOtpEmail(normalizedMobile, rawOtp, expirationMinutes);
 

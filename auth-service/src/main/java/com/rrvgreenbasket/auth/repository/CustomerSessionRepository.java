@@ -43,4 +43,10 @@ public interface CustomerSessionRepository extends JpaRepository<CustomerSession
             @Param("sessionId") String sessionId,
             @Param("lastActiveAt") LocalDateTime lastActiveAt
     );
+
+    @Modifying
+    @Query("UPDATE CustomerSession s SET s.status = com.rrvgreenbasket.auth.enums.SessionStatus.REVOKED, " +
+           "s.revokedAt = :now, s.revocationReason = 'PASSWORD_RESET' " +
+           "WHERE s.authUser.id = :userId AND s.status = com.rrvgreenbasket.auth.enums.SessionStatus.ACTIVE")
+    int revokeAllActiveByUserId(@Param("userId") Long userId, @Param("now") LocalDateTime now);
 }

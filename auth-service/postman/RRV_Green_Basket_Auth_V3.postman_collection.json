@@ -1,0 +1,784 @@
+{
+  "info": {
+    "_postman_id": "rrv-green-basket-auth-v3-collection",
+    "name": "RRV Green Basket – Auth Service V3",
+    "description": "Complete Postman collection for RRV Green Basket Auth Service.\n\n## Setup\n1. Import this collection.\n2. Create an environment (e.g. `Local`) and set:\n   - `baseUrl` → `http://localhost:8081`\n3. The test scripts auto-capture `accessToken`, `refreshToken`, and `resetToken` into the active environment.\n\n## Folders\n- **Email Registration** – Two-phase email OTP registration (V3)\n- **Email Login** – Email + password login (V3)\n- **Forgot Password** – Three-phase forgot-password flow (V3)\n- **Token Management** – Refresh + logout\n- **Admin Auth** – Admin login (preserved)\n- **Legacy Mobile OTP** – Original mobile OTP registration/login (preserved)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8081",
+      "type": "string",
+      "description": "Base URL of the Auth Service. Change to your deployed URL for staging/prod."
+    },
+    {
+      "key": "accessToken",
+      "value": "",
+      "type": "string",
+      "description": "JWT access token – auto-populated by login/registration test scripts."
+    },
+    {
+      "key": "refreshToken",
+      "value": "",
+      "type": "string",
+      "description": "Refresh token – auto-populated by login/registration test scripts."
+    },
+    {
+      "key": "resetToken",
+      "value": "",
+      "type": "string",
+      "description": "Password reset token – auto-populated by forgot-password verify-otp test script."
+    },
+    {
+      "key": "customerEmail",
+      "value": "mahendra@example.com",
+      "type": "string",
+      "description": "Test customer email – used across registration, login, and forgot-password flows."
+    },
+    {
+      "key": "customerPassword",
+      "value": "StrongPassword@123",
+      "type": "string",
+      "description": "Test customer password."
+    }
+  ],
+  "item": [
+    {
+      "name": "Email Registration (V3)",
+      "description": "Two-phase email OTP registration.\n\nPhase 1 → Send OTP to email.\nPhase 2 → Verify OTP → account created → JWT tokens returned.",
+      "item": [
+        {
+          "name": "1. Send Registration OTP",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Mahendra Kumar\",\n  \"mobileNumber\": \"9876543210\",\n  \"email\": \"{{customerEmail}}\",\n  \"password\": \"{{customerPassword}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/customer/email-register/send-otp",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "customer", "email-register", "send-otp"]
+            },
+            "description": "Phase 1 of email registration.\n\nSubmits full registration details. Validates all fields, checks for duplicate email/mobile, generates a 6-digit OTP, hashes it, and sends it to the provided email via Resend.\n\nThe account is NOT created yet at this stage.\n\n**Expected:** 200 OK – `{ message: \"Verification OTP sent to your email.\", ... }`\n\n**Error cases:**\n- 409 Conflict – email or mobile already registered\n- 429 Too Many Requests – resend cooldown active\n- 400 Bad Request – validation errors"
+          },
+          "response": [
+            {
+              "name": "200 – OTP Sent",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Verification OTP sent to your email.\",\n  \"data\": {\n    \"message\": \"Verification OTP sent to your email.\",\n    \"expiresInMinutes\": 5\n  }\n}"
+            },
+            {
+              "name": "409 – Email Already Registered",
+              "status": "Conflict",
+              "code": 409,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Email address is already registered.\",\n  \"data\": null\n}"
+            },
+            {
+              "name": "400 – Weak Password",
+              "status": "Bad Request",
+              "code": 400,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Password must be at least 8 characters with uppercase, lowercase, digit and special character.\",\n  \"data\": null\n}"
+            }
+          ],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response indicates OTP sent', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.success).to.be.true;",
+                  "    pm.expect(json.message).to.include('OTP');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2. Verify Registration OTP & Complete Registration",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{customerEmail}}\",\n  \"otp\": \"123456\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/customer/email-register/verify-otp",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "customer", "email-register", "verify-otp"]
+            },
+            "description": "Phase 2 of email registration.\n\nVerifies the OTP, marks email as verified, creates the authentication identity, calls Customer Service to initialize the customer profile, and returns JWT tokens.\n\nRegistration is NOT completed if Customer Service profile creation fails.\n\n**Replace `123456` with the actual OTP received in the email.**\n\n**Expected:** 201 Created – `{ accessToken, refreshToken, ... }`\n\n**Error cases:**\n- 400 Bad Request – invalid or expired OTP, max attempts exceeded\n- 503 Service Unavailable – Customer Service profile creation failed"
+          },
+          "response": [
+            {
+              "name": "201 – Registered & Authenticated",
+              "status": "Created",
+              "code": 201,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Registration successful. Welcome to RRV Green Basket!\",\n  \"data\": {\n    \"accessToken\": \"eyJhbGciOiJIUzI1NiJ9...\",\n    \"refreshToken\": \"eyJhbGciOiJIUzI1NiJ9...\",\n    \"tokenType\": \"Bearer\",\n    \"expiresIn\": 900,\n    \"user\": {\n      \"id\": 1,\n      \"email\": \"mahendra@example.com\",\n      \"role\": \"CUSTOMER\"\n    }\n  }\n}"
+            },
+            {
+              "name": "400 – Invalid OTP",
+              "status": "Bad Request",
+              "code": 400,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Invalid or expired OTP.\",\n  \"data\": null\n}"
+            },
+            {
+              "name": "503 – Customer Service Unavailable",
+              "status": "Service Unavailable",
+              "code": 503,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Customer profile provisioning failed. Please contact support.\",\n  \"data\": null\n}"
+            }
+          ],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "if (pm.response.code === 201) {",
+                  "    const json = pm.response.json();",
+                  "    if (json.data && json.data.accessToken) {",
+                  "        pm.environment.set('accessToken', json.data.accessToken);",
+                  "        console.log('accessToken saved to environment');",
+                  "    }",
+                  "    if (json.data && json.data.refreshToken) {",
+                  "        pm.environment.set('refreshToken', json.data.refreshToken);",
+                  "        console.log('refreshToken saved to environment');",
+                  "    }",
+                  "}",
+                  "",
+                  "pm.test('Access token present', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.data).to.have.property('accessToken');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Email Login (V3)",
+      "description": "Email + BCrypt password login for existing verified customers.\n\nNo OTP required for normal login.",
+      "item": [
+        {
+          "name": "Customer Email Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{customerEmail}}\",\n  \"password\": \"{{customerPassword}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/customer/email-login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "customer", "email-login"]
+            },
+            "description": "Email + password login for customers.\n\nVerifies BCrypt password, checks account status (verified, active, not blocked), creates a session, and returns JWT access + refresh tokens.\n\n**Expected:** 200 OK – `{ accessToken, refreshToken, ... }`\n\n**Error cases:**\n- 401 Unauthorized – wrong password or email not found\n- 403 Forbidden – email not verified\n- 423 Locked – account blocked\n- 403 Forbidden – account pending/disabled"
+          },
+          "response": [
+            {
+              "name": "200 – Login Successful",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Login successful.\",\n  \"data\": {\n    \"accessToken\": \"eyJhbGciOiJIUzI1NiJ9...\",\n    \"refreshToken\": \"eyJhbGciOiJIUzI1NiJ9...\",\n    \"tokenType\": \"Bearer\",\n    \"expiresIn\": 900,\n    \"user\": {\n      \"id\": 1,\n      \"email\": \"mahendra@example.com\",\n      \"role\": \"CUSTOMER\"\n    }\n  }\n}"
+            },
+            {
+              "name": "401 – Invalid Credentials",
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Invalid email or password.\",\n  \"data\": null\n}"
+            },
+            {
+              "name": "403 – Email Not Verified",
+              "status": "Forbidden",
+              "code": 403,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Email address is not verified. Please complete registration.\",\n  \"data\": null\n}"
+            }
+          ],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "if (pm.response.code === 200) {",
+                  "    const json = pm.response.json();",
+                  "    if (json.data && json.data.accessToken) {",
+                  "        pm.environment.set('accessToken', json.data.accessToken);",
+                  "        console.log('accessToken saved to environment');",
+                  "    }",
+                  "    if (json.data && json.data.refreshToken) {",
+                  "        pm.environment.set('refreshToken', json.data.refreshToken);",
+                  "        console.log('refreshToken saved to environment');",
+                  "    }",
+                  "}",
+                  "",
+                  "pm.test('Access token present on success', function () {",
+                  "    if (pm.response.code === 200) {",
+                  "        const json = pm.response.json();",
+                  "        pm.expect(json.data).to.have.property('accessToken');",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Forgot Password (V3)",
+      "description": "Three-phase secure forgot-password flow.\n\nPhase 1 → Send OTP.\nPhase 2 → Verify OTP → get short-lived reset token.\nPhase 3 → Reset password using reset token.",
+      "item": [
+        {
+          "name": "1. Forgot Password – Send OTP",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{customerEmail}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/customer/forgot-password/send-otp",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "customer", "forgot-password", "send-otp"]
+            },
+            "description": "Phase 1 of forgot-password flow.\n\nSends a PASSWORD_RESET OTP to the provided email via Resend.\n\n**Security note:** Always returns 200 regardless of whether the email exists, to prevent user enumeration.\n\n**Expected:** 200 OK – `{ message: \"If this email is registered, an OTP has been sent.\" }`\n\n**Error cases:**\n- 429 Too Many Requests – resend cooldown active"
+          },
+          "response": [
+            {
+              "name": "200 – OTP Sent (consistent response)",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"If this email is registered, a password reset OTP has been sent.\",\n  \"data\": {\n    \"message\": \"If this email is registered, a password reset OTP has been sent.\",\n    \"expiresInMinutes\": 5\n  }\n}"
+            }
+          ],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Consistent response body', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.success).to.be.true;",
+                  "    // Should NOT reveal whether email exists",
+                  "    pm.expect(json.message).to.include('registered');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2. Forgot Password – Verify OTP",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{customerEmail}}\",\n  \"otp\": \"123456\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/customer/forgot-password/verify-otp",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "customer", "forgot-password", "verify-otp"]
+            },
+            "description": "Phase 2 of forgot-password flow.\n\nVerifies the PASSWORD_RESET OTP and returns a short-lived (15 min), single-use password reset token. This token is required for Phase 3.\n\n**Replace `123456` with the actual OTP received in the email.**\n\n**Important:** OTP verification does NOT change the password.\n\n**Expected:** 200 OK – `{ resetToken, expiresInMinutes: 15 }`\n\n**Error cases:**\n- 400 Bad Request – invalid or expired OTP\n- 400 Bad Request – max attempts exceeded\n- 404 Not Found – no active OTP challenge"
+          },
+          "response": [
+            {
+              "name": "200 – Reset Token Issued",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"OTP verified. Use the reset token to set a new password.\",\n  \"data\": {\n    \"resetToken\": \"a1b2c3d4-e5f6-7890-abcd-ef1234567890\",\n    \"expiresInMinutes\": 15,\n    \"message\": \"OTP verified. Use the reset token to set a new password.\"\n  }\n}"
+            },
+            {
+              "name": "400 – Invalid OTP",
+              "status": "Bad Request",
+              "code": 400,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Invalid or expired OTP.\",\n  \"data\": null\n}"
+            }
+          ],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "if (pm.response.code === 200) {",
+                  "    const json = pm.response.json();",
+                  "    if (json.data && json.data.resetToken) {",
+                  "        pm.environment.set('resetToken', json.data.resetToken);",
+                  "        console.log('resetToken saved to environment');",
+                  "    }",
+                  "}",
+                  "",
+                  "pm.test('Reset token present', function () {",
+                  "    if (pm.response.code === 200) {",
+                  "        const json = pm.response.json();",
+                  "        pm.expect(json.data).to.have.property('resetToken');",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3. Forgot Password – Reset Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"resetToken\": \"{{resetToken}}\",\n  \"newPassword\": \"NewStrongPassword@456\",\n  \"confirmPassword\": \"NewStrongPassword@456\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/customer/forgot-password/reset",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "customer", "forgot-password", "reset"]
+            },
+            "description": "Phase 3 of forgot-password flow.\n\nResets the customer's password using the short-lived reset token from Phase 2.\n\nAfter successful reset:\n- Password is BCrypt hashed and updated\n- Reset token is consumed (single-use)\n- All existing refresh tokens and sessions are revoked\n- Customer must log in again with the new password\n\n**Expected:** 200 OK – `{ message: \"Password reset successfully.\" }`\n\n**Error cases:**\n- 401 Unauthorized – invalid, expired, or already-used reset token\n- 422 Unprocessable Entity – password confirmation mismatch\n- 400 Bad Request – weak password"
+          },
+          "response": [
+            {
+              "name": "200 – Password Reset",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Password reset successfully. Please log in with your new password.\",\n  \"data\": null\n}"
+            },
+            {
+              "name": "401 – Invalid Reset Token",
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Invalid, expired, or already-used reset token.\",\n  \"data\": null\n}"
+            },
+            {
+              "name": "422 – Password Mismatch",
+              "status": "Unprocessable Entity",
+              "code": 422,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Passwords do not match.\",\n  \"data\": null\n}"
+            }
+          ],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "if (pm.response.code === 200) {",
+                  "    // Clear tokens — customer must log in again",
+                  "    pm.environment.set('accessToken', '');",
+                  "    pm.environment.set('refreshToken', '');",
+                  "    pm.environment.set('resetToken', '');",
+                  "    console.log('Tokens cleared. Please log in with new password.');",
+                  "}",
+                  "",
+                  "pm.test('Success message present', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.success).to.be.true;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Token Management",
+      "description": "JWT access token refresh and customer logout.",
+      "item": [
+        {
+          "name": "Refresh Token",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/customer/refresh",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "customer", "refresh"]
+            },
+            "description": "Rotates the refresh token and issues a new JWT access token.\n\nUses refresh token rotation — the submitted refresh token is invalidated and a new one is returned.\n\n**Expected:** 200 OK – new `{ accessToken, refreshToken }`"
+          },
+          "response": [
+            {
+              "name": "200 – Token Refreshed",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Token refreshed successfully.\",\n  \"data\": {\n    \"accessToken\": \"eyJhbGciOiJIUzI1NiJ9...\",\n    \"refreshToken\": \"eyJhbGciOiJIUzI1NiJ9...\",\n    \"tokenType\": \"Bearer\",\n    \"expiresIn\": 900\n  }\n}"
+            }
+          ],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "if (pm.response.code === 200) {",
+                  "    const json = pm.response.json();",
+                  "    if (json.data && json.data.accessToken) {",
+                  "        pm.environment.set('accessToken', json.data.accessToken);",
+                  "        console.log('accessToken rotated');",
+                  "    }",
+                  "    if (json.data && json.data.refreshToken) {",
+                  "        pm.environment.set('refreshToken', json.data.refreshToken);",
+                  "        console.log('refreshToken rotated');",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Customer Logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/customer/logout",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "customer", "logout"]
+            },
+            "description": "Revokes the current device session and refresh token family.\n\nRequires a valid `Authorization: Bearer <accessToken>` header.\n\n**Expected:** 200 OK – `{ message: \"Logged out successfully.\" }`"
+          },
+          "response": [
+            {
+              "name": "200 – Logged Out",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Logged out successfully.\",\n  \"data\": {\n    \"message\": \"Logged out successfully.\"\n  }\n}"
+            }
+          ],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "if (pm.response.code === 200) {",
+                  "    pm.environment.set('accessToken', '');",
+                  "    pm.environment.set('refreshToken', '');",
+                  "    console.log('Tokens cleared after logout.');",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Admin Auth",
+      "description": "Admin login (preserved, unchanged).",
+      "item": [
+        {
+          "name": "Admin Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@rrvgreenbasket.com\",\n  \"password\": \"AdminPassword@123\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/admin/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "admin", "login"]
+            },
+            "description": "Admin email + password login.\n\nThis endpoint is completely separate from customer auth and was not modified.\n\n**Expected:** 200 OK – `{ accessToken, refreshToken, ... }`"
+          },
+          "response": [
+            {
+              "name": "200 – Admin Login Successful",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Login successful.\",\n  \"data\": {\n    \"accessToken\": \"eyJhbGciOiJIUzI1NiJ9...\",\n    \"refreshToken\": \"eyJhbGciOiJIUzI1NiJ9...\",\n    \"tokenType\": \"Bearer\",\n    \"expiresIn\": 900,\n    \"user\": {\n      \"id\": 1,\n      \"email\": \"admin@rrvgreenbasket.com\",\n      \"role\": \"ADMIN\"\n    }\n  }\n}"
+            }
+          ],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "if (pm.response.code === 200) {",
+                  "    const json = pm.response.json();",
+                  "    if (json.data && json.data.accessToken) {",
+                  "        pm.environment.set('accessToken', json.data.accessToken);",
+                  "        console.log('Admin accessToken saved');",
+                  "    }",
+                  "    if (json.data && json.data.refreshToken) {",
+                  "        pm.environment.set('refreshToken', json.data.refreshToken);",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Legacy Mobile OTP (Preserved)",
+      "description": "Original mobile OTP registration and login flows — preserved and unchanged.\n\nUse these for the legacy mobile-number based authentication if still needed.",
+      "item": [
+        {
+          "name": "[Legacy] Send Mobile Registration OTP",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Mahendra Kumar\",\n  \"mobileNumber\": \"9876543210\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/customer/register/send-otp",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "customer", "register", "send-otp"]
+            },
+            "description": "Legacy mobile OTP registration – Phase 1.\n\nSends a 6-digit OTP to the mobile number. No email required.\n\n**Expected:** 200 OK – OTP sent confirmation."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[Legacy] Verify Mobile Registration OTP",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mobileNumber\": \"9876543210\",\n  \"otp\": \"123456\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/customer/register/verify-otp",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "customer", "register", "verify-otp"]
+            },
+            "description": "Legacy mobile OTP registration – Phase 2.\n\nVerifies OTP, creates account, initializes Customer Service profile, returns auth tokens.\n\n**Replace `123456` with actual OTP.**"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "if (pm.response.code === 201) {",
+                  "    const json = pm.response.json();",
+                  "    if (json.data && json.data.accessToken) {",
+                  "        pm.environment.set('accessToken', json.data.accessToken);",
+                  "    }",
+                  "    if (json.data && json.data.refreshToken) {",
+                  "        pm.environment.set('refreshToken', json.data.refreshToken);",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[Legacy] Send Mobile Login OTP",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mobileNumber\": \"9876543210\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/customer/mobile-login/send-otp",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "customer", "mobile-login", "send-otp"]
+            },
+            "description": "Legacy mobile OTP login – Phase 1.\n\nSends OTP to registered mobile number for login."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[Legacy] Verify Mobile Login OTP",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mobileNumber\": \"9876543210\",\n  \"otp\": \"123456\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/customer/mobile-login/verify-otp",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "customer", "mobile-login", "verify-otp"]
+            },
+            "description": "Legacy mobile OTP login – Phase 2.\n\nVerifies OTP and returns auth tokens.\n\n**Replace `123456` with actual OTP.**"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "if (pm.response.code === 200) {",
+                  "    const json = pm.response.json();",
+                  "    if (json.data && json.data.accessToken) {",
+                  "        pm.environment.set('accessToken', json.data.accessToken);",
+                  "    }",
+                  "    if (json.data && json.data.refreshToken) {",
+                  "        pm.environment.set('refreshToken', json.data.refreshToken);",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

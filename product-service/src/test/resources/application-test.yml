@@ -1,4 +1,4 @@
-server:
+﻿server:
   port: 0
 
 spring:
@@ -57,7 +57,7 @@ app:
     secret: 404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
     issuer: rrv-gateway
   security:
-    internal-service-secret: c8f7e2d1a5b49382716054321fedcba9876543210abcdef0123456789abcdef0
+    internal-service-secret: RQpmB5hGO2NsLNE7OnwXo5NfNtEJj+j+461g0oEeGunJPZ4iYQEGr+uk5M3hAfgDg26IDtmA9N2RJbFXkCLrqQ==
     internal-service-id: product-service
     authorized-internal-services: api-gateway,auth-service,order-service,inventory-service
   services:

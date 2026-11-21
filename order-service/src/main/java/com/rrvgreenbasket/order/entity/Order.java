@@ -27,7 +27,9 @@ import java.util.List;
                 @Index(name = "idx_orders_number", columnList = "order_number"),
                 @Index(name = "idx_orders_placed_at", columnList = "order_placed_at"),
                 @Index(name = "idx_orders_delivery_date", columnList = "promised_delivery_date"),
-                @Index(name = "idx_orders_idempotency", columnList = "customer_public_id, idempotency_key")
+                @Index(name = "idx_orders_idempotency", columnList = "customer_public_id, idempotency_key"),
+                @Index(name = "idx_orders_customer_mobile", columnList = "registered_customer_mobile"),
+                @Index(name = "idx_orders_customer_name", columnList = "registered_customer_name")
         }
 )
 @Getter
@@ -49,6 +51,12 @@ public class Order {
 
     @Column(name = "customer_public_id", length = 36, nullable = false, columnDefinition = "CHAR(36)")
     private String customerPublicId;
+
+    @Column(name = "registered_customer_name", length = 150)
+    private String registeredCustomerName;
+
+    @Column(name = "registered_customer_mobile", length = 20)
+    private String registeredCustomerMobile;
 
     @Column(name = "delivery_zone_public_id", length = 36, nullable = false, columnDefinition = "CHAR(36)")
     private String deliveryZonePublicId;

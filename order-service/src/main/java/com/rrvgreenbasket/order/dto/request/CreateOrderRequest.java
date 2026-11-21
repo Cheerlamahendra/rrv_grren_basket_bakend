@@ -30,4 +30,8 @@ public class CreateOrderRequest {
 
     @Schema(description = "Client-supplied idempotency key to prevent double submissions")
     private String idempotencyKey;
+
+    @Schema(description = "Whether to save new address to customer's saved address book")
+    @Builder.Default
+    private Boolean saveAddress = true;
 }

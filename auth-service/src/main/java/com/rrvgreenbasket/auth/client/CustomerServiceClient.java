@@ -1,5 +1,7 @@
 package com.rrvgreenbasket.auth.client;
 
+import com.rrvgreenbasket.auth.dto.response.CustomerProfileDto;
+
 /**
  * CustomerServiceClient Interface
  *
@@ -14,4 +16,5 @@ public interface CustomerServiceClient {
     boolean verifyProfileExists(String authUserId);
 
     void compensateCustomerProfile(String authUserId);
+    CustomerProfileDto getCustomerProfile(String authUserId);
 }

@@ -39,7 +39,7 @@ public class CustomerAddressController {
         this.addressService = addressService;
     }
 
-    @GetMapping("/addresses")
+    @GetMapping({"/addresses", "/me/addresses"})
     @Operation(summary = "Get all customer addresses", description = "Returns all delivery addresses belonging to the authenticated customer")
     public ResponseEntity<ApiResponse<List<AddressResponse>>> getMyAddresses(
             @AuthenticationPrincipal UserPrincipal principal) {
@@ -48,7 +48,7 @@ public class CustomerAddressController {
         return ResponseEntity.ok(ApiResponse.success("Addresses retrieved successfully", addresses));
     }
 
-    @PostMapping("/add/addresses")
+    @PostMapping({"/addresses", "/add/addresses", "/me/addresses"})
     @Operation(summary = "Add new delivery address", description = "Adds a delivery address. First address automatically becomes default")
     public ResponseEntity<ApiResponse<AddressResponse>> addAddress(
             @AuthenticationPrincipal UserPrincipal principal,

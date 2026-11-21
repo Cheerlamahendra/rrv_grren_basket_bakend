@@ -34,6 +34,8 @@ public interface OrderService {
 
     OrderResponse updateOrderStatus(String orderPublicId, OrderStatus newStatus, String reason, String changedBy);
 
+    void deleteCancelledOrder(String orderPublicId, String adminUser);
+
     OrderStatisticsResponse getAdminStatistics();
 
     OrderDetailsDto getOrderForPayment(String orderPublicId);

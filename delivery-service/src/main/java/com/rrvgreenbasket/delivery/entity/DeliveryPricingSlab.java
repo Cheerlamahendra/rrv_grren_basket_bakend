@@ -70,12 +70,32 @@ public class DeliveryPricingSlab {
     private Long version = 0L;
 
     /**
-     * Checks if this slab covers the specified distance in meters.
+     * Checks if this slab covers the specified distance in meters at current time.
      * Slabs use inclusive boundaries: [min, max].
      */
     public boolean covers(int distanceMeters) {
-        return Boolean.TRUE.equals(active)
-                && distanceMeters >= minimumDistanceMeters
-                && distanceMeters <= maximumDistanceMeters;
+        return covers(distanceMeters, LocalDateTime.now());
+    }
+
+    /**
+     * Checks if this slab covers the specified distance in meters at the given reference time.
+     * NULL effective start and end dates are treated as unrestricted.
+     */
+    public boolean covers(int distanceMeters, LocalDateTime referenceTime) {
+        if (!Boolean.TRUE.equals(active)) {
+            return false;
+        }
+        if (distanceMeters < minimumDistanceMeters || distanceMeters > maximumDistanceMeters) {
+            return false;
+        }
+        if (referenceTime != null) {
+            if (effectiveStartDate != null && referenceTime.isBefore(effectiveStartDate)) {
+                return false;
+            }
+            if (effectiveEndDate != null && referenceTime.isAfter(effectiveEndDate)) {
+                return false;
+            }
+        }
+        return true;
     }
 }

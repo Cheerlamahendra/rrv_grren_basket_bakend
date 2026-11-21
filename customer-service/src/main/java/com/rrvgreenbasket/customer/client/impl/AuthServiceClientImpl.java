@@ -36,7 +36,7 @@ public class AuthServiceClientImpl implements AuthServiceClient {
             S2SSignatureUtil signatureUtil,
             ObjectMapper objectMapper,
             @Value("${app.services.auth-service-url:http://localhost:8081}") String authServiceBaseUrl,
-            @Value("${app.security.internal-service-secret:c8f7e2d1a5b49382716054321fedcba9876543210abcdef0123456789abcdef0}") String internalSecret,
+            @Value("${app.security.internal-service-secret:RQpmB5hGO2NsLNE7OnwXo5NfNtEJj+j+461g0oEeGunJPZ4iYQEGr+uk5M3hAfgDg26IDtmA9N2RJbFXkCLrqQ==}") String internalSecret,
             @Value("${app.security.internal-service-id:customer-service}") String serviceId) {
 
         this.signatureUtil = signatureUtil;

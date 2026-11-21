@@ -16,25 +16,22 @@ import java.time.LocalTime;
 @Builder
 public class UpdateOrderBusinessSettingsRequest {
 
-    @NotNull(message = "Order acceptance enabled flag is required")
     @Schema(example = "true")
     private Boolean orderAcceptanceEnabled;
 
     @NotNull(message = "Opening time is required")
     @JsonFormat(pattern = "HH:mm")
-    @Schema(type = "string", pattern = "HH:mm", example = "08:00")
+    @Schema(type = "string", pattern = "HH:mm", example = "06:00")
     private LocalTime openingTime;
 
     @NotNull(message = "Closing time is required")
     @JsonFormat(pattern = "HH:mm")
-    @Schema(type = "string", pattern = "HH:mm", example = "21:00")
+    @Schema(type = "string", pattern = "HH:mm", example = "22:00")
     private LocalTime closingTime;
 
-    @NotNull(message = "Delivery type is required")
     @Schema(example = "NEXT_DAY")
     private DeliveryType deliveryType;
 
-    @NotNull(message = "Delivery days offset is required")
     @Min(value = 0, message = "Offset cannot be negative")
     @Schema(example = "1")
     private Integer deliveryDaysOffset;

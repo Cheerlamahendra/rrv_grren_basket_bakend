@@ -39,7 +39,7 @@ public class CustomerOrderController {
 
     @PostMapping
     @PreAuthorize("hasRole('CUSTOMER')")
-    @Operation(summary = "Create an order", description = "Validates operating window, delivery coordinates, cart, stock, and reserves inventory")
+    @Operation(summary = "Create an order", description = "Validates operating window, delivery coordinates, cart, and product availability")
     public ResponseEntity<ApiResponse<OrderResponse>> createOrder(
             @Valid @RequestBody CreateOrderRequest request,
             @AuthenticationPrincipal UserPrincipal principal

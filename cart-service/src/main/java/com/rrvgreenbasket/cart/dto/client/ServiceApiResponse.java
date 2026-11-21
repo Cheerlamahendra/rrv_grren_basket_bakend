@@ -1,12 +1,12 @@
+
 package com.rrvgreenbasket.cart.dto.client;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import java.time.OffsetDateTime;
 
-@JsonIgnoreProperties(ignoreUnknown = true)
 public record ServiceApiResponse<T>(
         Boolean success,
         String message,
         T data,
-        Object timestamp
+        OffsetDateTime timestamp
 ) {
 }

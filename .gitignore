@@ -1,8 +1,14 @@
+# Maven generated files
 **/target/
-.idea/
-*.iml
-*.zip
+
+# Environment secrets
 .env
 .env.*
 !.env.example
+
+# IDE files
+.idea/
+*.iml
+
+# Logs
 *.log

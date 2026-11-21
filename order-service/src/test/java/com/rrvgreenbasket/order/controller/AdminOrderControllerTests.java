@@ -124,4 +124,38 @@ class AdminOrderControllerTests {
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.orderStatus").value("CONFIRMED"));
     }
+
+    @Test
+    @DisplayName("PATCH /api/admin/orders/{orderNumber}/status transitions order status using orderNumber and remarks")
+    void testUpdateStatusWithOrderNumberAndRemarks() throws Exception {
+        String jsonPayload = "{\"status\":\"Processing\",\"remarks\":\"Order is being prepared\"}";
+
+        OrderResponse response = OrderResponse.builder()
+                .orderPublicId("ord-uuid-1")
+                .orderNumber("RRV-20261121-63588")
+                .orderStatus(OrderStatus.PROCESSING)
+                .build();
+
+        when(orderService.updateOrderStatus(eq("RRV-20261121-63588"), eq(OrderStatus.PROCESSING), eq("Order is being prepared"), any()))
+                .thenReturn(response);
+
+        mockMvc.perform(patch("/api/admin/orders/RRV-20261121-63588/status")
+                        .with(authentication(getAdminAuth()))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(jsonPayload))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.orderNumber").value("RRV-20261121-63588"))
+                .andExpect(jsonPath("$.data.orderStatus").value("PROCESSING"));
+    }
+
+    @Test
+    @DisplayName("DELETE /api/admin/orders/{orderPublicId} permanently deletes cancelled order")
+    void testDeleteCancelledOrder() throws Exception {
+        mockMvc.perform(delete("/api/admin/orders/ord-1")
+                        .with(authentication(getAdminAuth())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.message").value("Cancelled order permanently deleted successfully"));
+    }
 }

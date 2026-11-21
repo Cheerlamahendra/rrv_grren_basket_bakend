@@ -12,7 +12,8 @@ import java.util.Optional;
  * CustomerAuthRepository
  *
  * <p><strong>What it does:</strong></p>
- * Data access operations for <code>customer_auth</code> records by mobile number.
+ * Data access operations for <code>customer_auth</code> records.
+ * Supports lookups by mobile number (legacy) and email (V3 email/password auth).
  */
 @Repository
 public interface CustomerAuthRepository extends JpaRepository<CustomerAuth, Long> {
@@ -21,4 +22,9 @@ public interface CustomerAuthRepository extends JpaRepository<CustomerAuth, Long
     Optional<CustomerAuth> findByMobileNumber(@Param("mobileNumber") String mobileNumber);
 
     boolean existsByMobileNumber(String mobileNumber);
+
+    @Query("SELECT c FROM CustomerAuth c JOIN FETCH c.user WHERE c.email = :email")
+    Optional<CustomerAuth> findByEmail(@Param("email") String email);
+
+    boolean existsByEmail(String email);
 }

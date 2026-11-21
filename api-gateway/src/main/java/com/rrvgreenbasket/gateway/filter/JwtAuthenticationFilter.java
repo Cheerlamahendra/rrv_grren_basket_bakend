@@ -62,19 +62,46 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
     private final String serviceId;
 
     private static final List<String> DEFAULT_PUBLIC_ENDPOINTS = List.of(
+            // Customer Registration
             "/api/auth/customer/register/**",
+            "/api/auth/customer/register",
+
+            // Email Registration
+            "/api/auth/customer/email-register/send-otp",
+            "/api/auth/customer/email-register/verify-otp",
+
+            // Customer Login
             "/api/auth/customer/login/**",
+            "/api/auth/customer/login",
+            "/api/auth/customer/email-login",
+
+            // Mobile OTP Authentication
             "/api/auth/customer/send-otp",
             "/api/auth/customer/verify-otp",
-            "/api/auth/customer/register",
-            "/api/auth/customer/login",
-            "/api/auth/admin/login",
-            "/api/auth/refresh",
+
+            // Forgot Password
+            "/api/auth/customer/forgot-password/send-otp",
+            "/api/auth/customer/forgot-password/verify-otp",
+            "/api/auth/customer/forgot-password/reset",
+
+            // Refresh Token
             "/api/auth/customer/refresh",
+            "/api/auth/refresh",
+
+            // Admin Login
+            "/api/auth/admin/login",
+
+            // Gateway
             "/api/gateway/status",
             "/api/gateway/routes",
+
+            // Fallback
             "/fallback/**",
+
+            // Actuator
             "/actuator/**",
+
+            // Swagger / OpenAPI
             "/v3/api-docs/**",
             "/swagger-ui/**",
             "/swagger-ui.html",
@@ -91,7 +118,7 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
             ObjectMapper objectMapper,
             WebClient.Builder webClientBuilder,
             @Value("${app.services.auth-service-url:http://localhost:8081}") String authServiceBaseUrl,
-            @Value("${app.security.internal-service-secret:c8f7e2d1a5b49382716054321fedcba9876543210abcdef0123456789abcdef0}") String internalSecret,
+            @Value("${app.security.internal-service-secret:RQpmB5hGO2NsLNE7OnwXo5NfNtEJj+j+461g0oEeGunJPZ4iYQEGr+uk5M3hAfgDg26IDtmA9N2RJbFXkCLrqQ==}") String internalSecret,
             @Value("${app.security.internal-service-id:api-gateway}") String serviceId) {
 
         this.jwtUtil = jwtUtil;

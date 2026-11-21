@@ -25,4 +25,8 @@ public interface AddressService {
     AddressResponse getAddressById(String authUserId, String addressPublicId);
 
     AddressResponse setDefaultAddress(String authUserId, String addressPublicId);
+
+    AddressResponse getAddressByPublicIdAndCustomer(String addressPublicId, String customerIdentifier);
+
+    AddressResponse addOrGetAddress(String customerIdentifier, AddressRequest request);
 }

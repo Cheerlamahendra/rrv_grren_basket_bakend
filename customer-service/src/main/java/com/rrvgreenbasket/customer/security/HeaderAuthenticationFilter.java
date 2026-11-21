@@ -3,6 +3,7 @@ package com.rrvgreenbasket.customer.security;
 import com.rrvgreenbasket.customer.client.AuthServiceClient;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -45,23 +46,38 @@ public class HeaderAuthenticationFilter extends OncePerRequestFilter {
     private final AuthServiceClient authServiceClient;
     private final NonceReplayCache nonceReplayCache;
     private final SecretKey internalKey;
+    private final SecretKey fallbackUtf8Key;
 
     public HeaderAuthenticationFilter(
             JwtTokenProvider jwtTokenProvider,
             AuthServiceClient authServiceClient,
             NonceReplayCache nonceReplayCache,
-            @Value("${app.security.internal-service-secret:c8f7e2d1a5b49382716054321fedcba9876543210abcdef0123456789abcdef0}") String internalSecret) {
+            @Value("${app.security.internal-service-secret:RQpmB5hGO2NsLNE7OnwXo5NfNtEJj+j+461g0oEeGunJPZ4iYQEGr+uk5M3hAfgDg26IDtmA9N2RJbFXkCLrqQ==}") String internalSecret) {
         this.jwtTokenProvider = jwtTokenProvider;
         this.authServiceClient = authServiceClient;
         this.nonceReplayCache = nonceReplayCache;
 
-        byte[] keyBytes = internalSecret.getBytes(StandardCharsets.UTF_8);
-        if (keyBytes.length < 32) {
-            byte[] padded = new byte[32];
-            System.arraycopy(keyBytes, 0, padded, 0, keyBytes.length);
-            keyBytes = padded;
+        if (!StringUtils.hasText(internalSecret)) {
+            throw new IllegalStateException("Internal service secret is missing. Set app.security.internal-service-secret or INTERNAL_SERVICE_SECRET.");
         }
-        this.internalKey = Keys.hmacShaKeyFor(keyBytes);
+
+        SecretKey parsedKey = null;
+        try {
+            byte[] keyBytes = Decoders.BASE64.decode(internalSecret.trim());
+            if (keyBytes.length >= 32) {
+                parsedKey = Keys.hmacShaKeyFor(keyBytes);
+            }
+        } catch (Exception ignored) {
+        }
+
+        byte[] utf8Bytes = internalSecret.getBytes(StandardCharsets.UTF_8);
+        if (utf8Bytes.length < 32) {
+            byte[] padded = new byte[32];
+            System.arraycopy(utf8Bytes, 0, padded, 0, utf8Bytes.length);
+            utf8Bytes = padded;
+        }
+        this.fallbackUtf8Key = Keys.hmacShaKeyFor(utf8Bytes);
+        this.internalKey = (parsedKey != null) ? parsedKey : this.fallbackUtf8Key;
     }
 
     @Override
@@ -83,11 +99,20 @@ public class HeaderAuthenticationFilter extends OncePerRequestFilter {
 
             // Option 1: Gateway Signed Assertion JWT
             if (StringUtils.hasText(gatewayAssertion)) {
-                Claims claims = Jwts.parser()
-                        .verifyWith(internalKey)
-                        .build()
-                        .parseSignedClaims(gatewayAssertion.trim())
-                        .getPayload();
+                Claims claims;
+                try {
+                    claims = Jwts.parser()
+                            .verifyWith(internalKey)
+                            .build()
+                            .parseSignedClaims(gatewayAssertion.trim())
+                            .getPayload();
+                } catch (Exception ex) {
+                    claims = Jwts.parser()
+                            .verifyWith(fallbackUtf8Key)
+                            .build()
+                            .parseSignedClaims(gatewayAssertion.trim())
+                            .getPayload();
+                }
 
                 String nonce = claims.getId();
                 if (nonce != null && !nonceReplayCache.checkAndStoreNonce(nonce)) {

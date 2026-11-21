@@ -26,8 +26,7 @@ import java.util.UUID;
         },
         indexes = {
                 @Index(name = "idx_carts_customer", columnList = "customer_public_id"),
-                @Index(name = "idx_carts_status", columnList = "status"),
-                @Index(name = "idx_carts_expires_at", columnList = "expires_at, status")
+                @Index(name = "idx_carts_status", columnList = "status")
         }
 )
 @Getter
@@ -48,12 +47,6 @@ public class Cart {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private CartStatus status = CartStatus.ACTIVE;
-
-    @Column(name = "currency", nullable = false, length = 3)
-    private String currency = "INR";
-
-    @Column(name = "expires_at")
-    private LocalDateTime expiresAt;
 
     @Column(
             name = "active_customer_public_id",

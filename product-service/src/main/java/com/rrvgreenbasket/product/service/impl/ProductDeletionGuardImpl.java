@@ -6,6 +6,7 @@ import com.rrvgreenbasket.product.exception.ConflictException;
 import com.rrvgreenbasket.product.exception.DependencyServiceUnavailableException;
 import com.rrvgreenbasket.product.service.ProductDeletionGuard;
 import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,6 +14,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestTemplate;
@@ -38,7 +40,7 @@ public class ProductDeletionGuardImpl implements ProductDeletionGuard {
             RestTemplateBuilder restTemplateBuilder,
             @Value("${app.services.order-service-url:http://localhost:8082}") String orderServiceUrl,
             @Value("${app.services.inventory-service-url:http://localhost:8085}") String inventoryServiceUrl,
-            @Value("${app.security.internal-service-secret:c8f7e2d1a5b49382716054321fedcba9876543210abcdef0123456789abcdef0}") String internalSecret,
+            @Value("${app.security.internal-service-secret:RQpmB5hGO2NsLNE7OnwXo5NfNtEJj+j+461g0oEeGunJPZ4iYQEGr+uk5M3hAfgDg26IDtmA9N2RJbFXkCLrqQ==}") String internalSecret,
             ObjectMapper objectMapper) {
 
         this.restTemplate = restTemplateBuilder
@@ -49,11 +51,13 @@ public class ProductDeletionGuardImpl implements ProductDeletionGuard {
         this.inventoryServiceUrl = inventoryServiceUrl.replaceAll("/+$", "");
         this.objectMapper = objectMapper;
 
-        byte[] keyBytes = internalSecret.getBytes(StandardCharsets.UTF_8);
-        if (keyBytes.length < 32) {
-            byte[] padded = new byte[32];
-            System.arraycopy(keyBytes, 0, padded, 0, keyBytes.length);
-            keyBytes = padded;
+        if (!StringUtils.hasText(internalSecret)) {
+            throw new IllegalStateException("Internal service secret is missing. Set app.security.internal-service-secret or INTERNAL_SERVICE_SECRET.");
+        }
+
+        byte[] keyBytes = Decoders.BASE64.decode(internalSecret.trim());
+        if (keyBytes.length < 64) {
+            throw new IllegalStateException("Gateway assertion secret must contain at least 64 bytes (512 bits) for HS512 algorithm. Current key size: " + (keyBytes.length * 8) + " bits");
         }
         this.internalKey = Keys.hmacShaKeyFor(keyBytes);
     }
@@ -173,7 +177,7 @@ public class ProductDeletionGuardImpl implements ProductDeletionGuard {
                 .claim("sid", UUID.randomUUID().toString())
                 .issuedAt(new Date(now))
                 .expiration(new Date(now + 60_000))
-                .signWith(internalKey, Jwts.SIG.HS256)
+                .signWith(internalKey, Jwts.SIG.HS512)
                 .compact();
     }
 }

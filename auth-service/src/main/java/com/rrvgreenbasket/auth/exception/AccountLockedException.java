@@ -10,6 +10,11 @@ public class AccountLockedException extends RuntimeException {
 
     private final long lockoutRemainingMinutes;
 
+    public AccountLockedException(String message) {
+        super(message);
+        this.lockoutRemainingMinutes = 0L;
+    }
+
     public AccountLockedException(String message, long lockoutRemainingMinutes) {
         super(message);
         this.lockoutRemainingMinutes = lockoutRemainingMinutes;

@@ -28,3 +28,12 @@ aws:
       - image/jpg
       - image/png
       - image/webp
+
+app:
+  jwt:
+    issuer: rrv-gateway
+  security:
+    internal-service-secret: ${INTERNAL_SERVICE_SECRET:RQpmB5hGO2NsLNE7OnwXo5NfNtEJj+j+461g0oEeGunJPZ4iYQEGr+uk5M3hAfgDg26IDtmA9N2RJbFXkCLrqQ==}
+    internal-service-id: product-service
+    gateway-audience: rrv-internal-services
+

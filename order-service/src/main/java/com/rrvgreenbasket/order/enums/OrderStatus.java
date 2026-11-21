@@ -32,4 +32,21 @@ public enum OrderStatus {
     public boolean isCancellableByAdmin() {
         return this == PLACED || this == CONFIRMED || this == PROCESSING || this == PACKED;
     }
+
+    @com.fasterxml.jackson.annotation.JsonCreator
+    public static OrderStatus fromString(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        String clean = value.trim().toUpperCase().replace(" ", "_");
+        if ("PENDING".equals(clean)) {
+            return CONFIRMED;
+        }
+        for (OrderStatus status : values()) {
+            if (status.name().equalsIgnoreCase(clean)) {
+                return status;
+            }
+        }
+        throw new IllegalArgumentException("Unknown order status: " + value);
+    }
 }

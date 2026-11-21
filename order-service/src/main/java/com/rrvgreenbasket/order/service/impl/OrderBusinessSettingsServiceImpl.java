@@ -42,28 +42,44 @@ public class OrderBusinessSettingsServiceImpl implements OrderBusinessSettingsSe
     public OrderBusinessSettingsResponse updateSettings(UpdateOrderBusinessSettingsRequest request, String adminUserId) {
         log.info("Admin '{}' updating order business settings", adminUserId);
 
-        if (!request.getOpeningTime().isBefore(request.getClosingTime())) {
-            throw new OrderValidationException("Opening time (" + request.getOpeningTime() + ") must be earlier than closing time (" + request.getClosingTime() + ")");
+        if (request.getOpeningTime() == null || request.getClosingTime() == null) {
+            throw new OrderValidationException("Opening time and closing time are required");
+        }
+
+        if (request.getOpeningTime().equals(request.getClosingTime())) {
+            throw new OrderValidationException("Opening time and closing time cannot be identical");
+        }
+
+        if (!request.getClosingTime().isAfter(request.getOpeningTime())) {
+            throw new OrderValidationException("Opening time (" + request.getOpeningTime() + ") must be earlier than closing time (" + request.getClosingTime() + ") on the same calendar day");
         }
 
         ZoneId zoneId;
         try {
-            zoneId = ZoneId.of(request.getTimezone() != null ? request.getTimezone() : "Asia/Kolkata");
+            zoneId = ZoneId.of(request.getTimezone() != null && !request.getTimezone().isBlank()
+                    ? request.getTimezone().trim() : "Asia/Kolkata");
         } catch (Exception e) {
             throw new OrderValidationException("Invalid timezone identifier: " + request.getTimezone());
         }
 
         OrderBusinessSettings settings = getSettingsEntity();
-        settings.setOrderAcceptanceEnabled(request.getOrderAcceptanceEnabled());
+        if (request.getOrderAcceptanceEnabled() != null) {
+            settings.setOrderAcceptanceEnabled(request.getOrderAcceptanceEnabled());
+        }
         settings.setOpeningTime(request.getOpeningTime());
         settings.setClosingTime(request.getClosingTime());
-        settings.setDeliveryType(request.getDeliveryType() != null ? request.getDeliveryType() : DeliveryType.NEXT_DAY);
-        settings.setDeliveryDaysOffset(request.getDeliveryDaysOffset() != null ? request.getDeliveryDaysOffset() : 1);
+        if (request.getDeliveryType() != null) {
+            settings.setDeliveryType(request.getDeliveryType());
+        }
+        if (request.getDeliveryDaysOffset() != null) {
+            settings.setDeliveryDaysOffset(request.getDeliveryDaysOffset());
+        }
         settings.setTimezone(zoneId.getId());
         settings.setUpdatedBy(adminUserId);
 
         OrderBusinessSettings saved = settingsRepository.save(settings);
-        log.info("Order business settings updated successfully");
+        log.info("Order business settings updated successfully: opening={}, closing={}, timezone={}",
+                saved.getOpeningTime(), saved.getClosingTime(), saved.getTimezone());
         return mapToResponse(saved);
     }
 
@@ -136,8 +152,8 @@ public class OrderBusinessSettingsServiceImpl implements OrderBusinessSettingsSe
         OrderBusinessSettings settings = OrderBusinessSettings.builder()
                 .publicId(UUID.randomUUID().toString())
                 .orderAcceptanceEnabled(true)
-                .openingTime(LocalTime.of(8, 0))
-                .closingTime(LocalTime.of(21, 0))
+                .openingTime(LocalTime.of(6, 0))
+                .closingTime(LocalTime.of(22, 0))
                 .deliveryType(DeliveryType.NEXT_DAY)
                 .deliveryDaysOffset(1)
                 .timezone("Asia/Kolkata")

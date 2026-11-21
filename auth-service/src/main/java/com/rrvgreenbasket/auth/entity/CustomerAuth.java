@@ -10,10 +10,13 @@ import java.time.LocalDateTime;
  *
  * <p><strong>What it does:</strong></p>
  * Customer credential extension entity mapped to MySQL table <code>customer_auth</code>.
+ * Stores both legacy mobile-based auth fields and new email/password-based auth fields
+ * added in V3 migration.
  *
  * <p><strong>Constraints:</strong></p>
  * <ul>
  *   <li><code>uk_customer_auth_mobile</code>: Unique constraint on mobile_number.</li>
+ *   <li><code>uk_customer_auth_email</code>: Unique constraint on email (added V3).</li>
  *   <li><code>fk_customer_auth_user</code>: Foreign key to <code>auth_users(id)</code>.</li>
  * </ul>
  */
@@ -21,7 +24,8 @@ import java.time.LocalDateTime;
 @Table(
     name = "customer_auth",
     uniqueConstraints = {
-        @UniqueConstraint(name = "uk_customer_auth_mobile", columnNames = "mobile_number")
+        @UniqueConstraint(name = "uk_customer_auth_mobile", columnNames = "mobile_number"),
+        @UniqueConstraint(name = "uk_customer_auth_email", columnNames = "email")
     }
 )
 @Getter
@@ -49,6 +53,27 @@ public class CustomerAuth {
 
     @Column(name = "mobile_verified_at")
     private LocalDateTime mobileVerifiedAt;
+
+    // -------------------------------------------------------------------------
+    // Email/Password Auth Fields (added V3)
+    // -------------------------------------------------------------------------
+
+    @Column(name = "email", length = 254, unique = true)
+    private String email;
+
+    @Column(name = "password_hash", length = 255)
+    private String passwordHash;
+
+    @Column(name = "email_verified", nullable = false)
+    @Builder.Default
+    private boolean emailVerified = false;
+
+    @Column(name = "email_verified_at")
+    private LocalDateTime emailVerifiedAt;
+
+    // -------------------------------------------------------------------------
+    // Audit timestamps
+    // -------------------------------------------------------------------------
 
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;

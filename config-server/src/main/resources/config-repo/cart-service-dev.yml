@@ -18,7 +18,6 @@ app:
   services:
     auth-service-url: ${AUTH_SERVICE_URL:http://localhost:8081}
     product-service-url: ${PRODUCT_SERVICE_URL:http://localhost:8084}
-    inventory-service-url: ${INVENTORY_SERVICE_URL:http://localhost:8085}
 
   client:
     connect-timeout-ms: 2000
@@ -29,5 +28,5 @@ app:
 
   security:
     internal-service-id: cart-service
-    internal-service-secret: ${INTERNAL_SERVICE_SECRET:c8f7e2d1a5b49382716054321fedcba9876543210abcdef0123456789abcdef0}
+    internal-service-secret: ${INTERNAL_SERVICE_SECRET:RQpmB5hGO2NsLNE7OnwXo5NfNtEJj+j+461g0oEeGunJPZ4iYQEGr+uk5M3hAfgDg26IDtmA9N2RJbFXkCLrqQ==}
     gateway-audience: rrv-internal-services

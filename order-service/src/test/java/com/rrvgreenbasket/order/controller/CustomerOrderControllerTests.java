@@ -77,9 +77,10 @@ class CustomerOrderControllerTests {
     @DisplayName("GET /api/orders/operating-window returns current window settings")
     void testGetOperatingWindow() throws Exception {
         OrderBusinessSettingsResponse settings = OrderBusinessSettingsResponse.builder()
+                .publicId("b4c5d6e7-f8a9-4b0c-1d2e-3f4a5b6c7d8e")
                 .orderAcceptanceEnabled(true)
-                .openingTime(LocalTime.of(8, 0))
-                .closingTime(LocalTime.of(21, 0))
+                .openingTime(LocalTime.of(6, 0))
+                .closingTime(LocalTime.of(22, 0))
                 .timezone("Asia/Kolkata")
                 .deliveryType(DeliveryType.NEXT_DAY)
                 .deliveryDaysOffset(1)
@@ -91,8 +92,9 @@ class CustomerOrderControllerTests {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.orderAcceptanceEnabled").value(true))
-                .andExpect(jsonPath("$.data.openingTime").value("08:00"))
-                .andExpect(jsonPath("$.data.closingTime").value("21:00"));
+                .andExpect(jsonPath("$.data.openingTime").value("06:00"))
+                .andExpect(jsonPath("$.data.closingTime").value("22:00"))
+                .andExpect(jsonPath("$.data.timezone").value("Asia/Kolkata"));
     }
 
     @Test

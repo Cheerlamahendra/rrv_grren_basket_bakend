@@ -1,4 +1,4 @@
-# ==============================================================================
+﻿# ==============================================================================
 # Delivery Service Local Fallback Configuration
 # ==============================================================================
 
@@ -64,14 +64,14 @@ app:
   jwt:
     issuer: rrv-gateway
   security:
-    internal-service-secret: ${INTERNAL_SERVICE_SECRET:}
+    internal-service-secret: ${INTERNAL_SERVICE_SECRET:RQpmB5hGO2NsLNE7OnwXo5NfNtEJj+j+461g0oEeGunJPZ4iYQEGr+uk5M3hAfgDg26IDtmA9N2RJbFXkCLrqQ==}
     internal-service-id: delivery-service
     gateway-audience: rrv-internal-services
 
 google:
   maps:
-    server-api-key: ${GOOGLE_MAPS_SERVER_KEY:}
-    browser-api-key: ${GOOGLE_MAPS_BROWSER_KEY:}
+    server-api-key: ${GOOGLE_MAPS_SERVER_KEY}
+    browser-api-key: ${GOOGLE_MAPS_BROWSER_KEY}
     places-enabled: ${GOOGLE_PLACES_ENABLED:true}
     geocoding-enabled: ${GOOGLE_GEOCODING_ENABLED:true}
     routes-enabled: ${GOOGLE_ROUTES_ENABLED:true}

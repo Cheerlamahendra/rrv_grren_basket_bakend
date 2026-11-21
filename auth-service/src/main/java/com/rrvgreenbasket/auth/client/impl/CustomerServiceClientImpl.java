@@ -1,6 +1,8 @@
 
 package com.rrvgreenbasket.auth.client.impl;
 
+import com.rrvgreenbasket.auth.dto.response.CustomerProfileApiResponse;
+import com.rrvgreenbasket.auth.dto.response.CustomerProfileDto;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.rrvgreenbasket.auth.client.CustomerServiceClient;
 import com.rrvgreenbasket.auth.security.S2SSignatureUtil;
@@ -31,6 +33,7 @@ public class CustomerServiceClientImpl implements CustomerServiceClient {
     private final String customerServiceBaseUrl;
     private final String internalSecret;
     private final String serviceId;
+
 
     public CustomerServiceClientImpl(
             S2SSignatureUtil signatureUtil,
@@ -401,5 +404,50 @@ public class CustomerServiceClientImpl implements CustomerServiceClient {
                     e
             );
         }
+    }
+    @Override
+    public CustomerProfileDto getCustomerProfile(String authUserId) {
+
+        String path = "/api/customers/internal/by-auth-user/" + authUserId;
+
+        long timestamp = System.currentTimeMillis();
+        String nonce = UUID.randomUUID().toString();
+
+        String bodyHash =
+                signatureUtil.calculateBodyHash(new byte[0]);
+
+        String canonicalString =
+                signatureUtil.buildCanonicalString(
+                        "GET",
+                        path,
+                        timestamp,
+                        nonce,
+                        bodyHash
+                );
+
+        String signature =
+                signatureUtil.calculateSignature(
+                        canonicalString,
+                        internalSecret
+                );
+
+        CustomerProfileApiResponse response = restClient.get()
+                .uri(path)
+                .header("X-Internal-Service-Id", serviceId)
+                .header("X-Internal-Key-Id", "v1")
+                .header("X-Internal-Timestamp", String.valueOf(timestamp))
+                .header("X-Internal-Nonce", nonce)
+                .header("X-Internal-Signature", signature)
+                .retrieve()
+                .body(CustomerProfileApiResponse.class);
+
+        if (response == null || !response.isSuccess()
+                || response.getData() == null) {
+            throw new IllegalStateException(
+                    "Customer profile not found in Customer Service"
+            );
+        }
+
+        return response.getData();
     }
 }

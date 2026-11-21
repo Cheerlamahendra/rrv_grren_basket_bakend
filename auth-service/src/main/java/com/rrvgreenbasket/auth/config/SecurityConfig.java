@@ -74,15 +74,21 @@ public class SecurityConfig {
 
                         // 2. Public Authentication Endpoints (Registration & Login)
                         .requestMatchers(
+                                // Legacy mobile OTP flows
                                 "/api/auth/customer/register/**",
                                 "/api/auth/customer/login/**",
                                 "/api/auth/customer/refresh",
                                 "/api/auth/customer/send-otp",
                                 "/api/auth/customer/verify-otp",
                                 "/api/auth/customer/register",
-                                "/api/auth/customer/login",
                                 "/api/auth/admin/login",
-                                "/api/auth/refresh"
+                                "/api/auth/refresh",
+                                // V3: Email/password registration
+                                "/api/auth/customer/email-register/**",
+                                // V3: Email/password login (renamed to avoid conflict with legacy /customer/login)
+                                "/api/auth/customer/email-login",
+                                // V3: Forgot-password (all three phases)
+                                "/api/auth/customer/forgot-password/**"
                         ).permitAll()
 
                         // 3. Monitoring & Health Probes

@@ -18,6 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * AddressServiceImpl
@@ -177,5 +178,65 @@ public class AddressServiceImpl implements AddressService {
         CustomerAddress updated = addressRepository.save(address);
 
         return addressMapper.toResponse(updated);
+    }
+
+    private Customer resolveCustomer(String customerIdentifier) {
+        if (customerIdentifier == null || customerIdentifier.isBlank()) {
+            throw new ResourceNotFoundException("Customer identifier is required");
+        }
+        String trimmed = customerIdentifier.trim();
+        return customerRepository.findByPublicId(trimmed)
+                .or(() -> customerRepository.findByAuthUserId(trimmed))
+                .orElseThrow(() -> new ResourceNotFoundException("Customer profile not found for: " + customerIdentifier));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public AddressResponse getAddressByPublicIdAndCustomer(String addressPublicId, String customerIdentifier) {
+        Customer customer = resolveCustomer(customerIdentifier);
+        log.debug("Fetching address '{}' for resolved customer '{}'", addressPublicId, customer.getPublicId());
+        CustomerAddress address = addressRepository.findByPublicIdAndCustomerId(addressPublicId, customer.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Address not found with ID: " + addressPublicId + " for customer: " + customerIdentifier));
+        return addressMapper.toResponse(address);
+    }
+
+    @Override
+    @Transactional
+    public AddressResponse addOrGetAddress(String customerIdentifier, AddressRequest request) {
+        Customer customer = resolveCustomer(customerIdentifier);
+        log.info("Ensuring address for customer publicId='{}', receiver='{}'", customer.getPublicId(), request.getReceiverName());
+
+        // Check if an existing identical address is already registered to avoid duplicates on checkout retry
+        if (request.getAddressLine1() != null && request.getPincode() != null && request.getReceiverMobile() != null) {
+            Optional<CustomerAddress> existing = addressRepository
+                    .findFirstByCustomerIdAndAddressLine1AndPincodeAndReceiverMobile(
+                            customer.getId(),
+                            request.getAddressLine1().trim(),
+                            request.getPincode().trim(),
+                            request.getReceiverMobile().trim());
+            if (existing.isPresent()) {
+                log.info("Idempotent address reuse: found existing address publicId='{}'", existing.get().getPublicId());
+                return addressMapper.toResponse(existing.get());
+            }
+        }
+
+        long currentCount = addressRepository.countByCustomerId(customer.getId());
+        if (currentCount >= MAX_ADDRESSES_PER_CUSTOMER) {
+            // If at limit, return default or newest address
+            return addressRepository.findFirstByCustomerIdOrderByUpdatedAtDesc(customer.getId())
+                    .map(addressMapper::toResponse)
+                    .orElseThrow(() -> new InvalidRequestException("Maximum address limit reached for customer."));
+        }
+
+        CustomerAddress address = addressMapper.toEntity(request, customer);
+        if (currentCount == 0) {
+            address.setDefault(true);
+        } else if (address.isDefault()) {
+            addressRepository.resetDefaultAddressesForCustomer(customer.getId());
+        }
+
+        CustomerAddress savedAddress = addressRepository.save(address);
+        log.info("New address created with publicId='{}' for customer='{}'", savedAddress.getPublicId(), customer.getPublicId());
+        return addressMapper.toResponse(savedAddress);
     }
 }

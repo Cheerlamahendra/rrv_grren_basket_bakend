@@ -21,3 +21,12 @@ aws:
     logo-prefix: branding/logo/
     favicon-prefix: branding/favicon/
     max-file-size-bytes: 2097152
+
+app:
+  jwt:
+    issuer: rrv-gateway
+  security:
+    internal-service-secret: ${INTERNAL_SERVICE_SECRET:RQpmB5hGO2NsLNE7OnwXo5NfNtEJj+j+461g0oEeGunJPZ4iYQEGr+uk5M3hAfgDg26IDtmA9N2RJbFXkCLrqQ==}
+    internal-service-id: store-service
+    gateway-audience: rrv-internal-services
+

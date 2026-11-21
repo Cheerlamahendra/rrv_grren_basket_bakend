@@ -38,12 +38,14 @@ class OrderBusinessSettingsServiceTests {
     void setUp() {
         defaultSettings = OrderBusinessSettings.builder()
                 .id(1L)
+                .publicId("b4c5d6e7-f8a9-4b0c-1d2e-3f4a5b6c7d8e")
                 .orderAcceptanceEnabled(true)
-                .openingTime(LocalTime.of(8, 0))
-                .closingTime(LocalTime.of(21, 0))
+                .openingTime(LocalTime.of(6, 0))
+                .closingTime(LocalTime.of(22, 0))
                 .timezone("Asia/Kolkata")
                 .deliveryType(DeliveryType.NEXT_DAY)
                 .deliveryDaysOffset(1)
+                .version(3L)
                 .build();
     }
 
@@ -53,71 +55,85 @@ class OrderBusinessSettingsServiceTests {
     }
 
     @Test
-    @DisplayName("Should accept order within business window at 8:00 AM (inclusive opening)")
-    void shouldAcceptOrderAtOpeningTime() {
+    @DisplayName("Should reject order before opening at 05:59 AM IST")
+    void shouldRejectOrderAt0559() {
         when(repository.findFirstByOrderByIdAsc()).thenReturn(Optional.of(defaultSettings));
 
-        // 8:00 AM IST
-        LocalDateTime time = LocalDateTime.of(2026, 11, 10, 8, 0, 0);
+        LocalDateTime time = LocalDateTime.of(2026, 11, 21, 5, 59, 0);
+        OrderBusinessSettingsService service = createServiceWithFixedClock(time, ZoneId.of("Asia/Kolkata"));
+
+        assertThatThrownBy(service::validateOrderAcceptanceWindow)
+                .isInstanceOf(OrderCutoffException.class)
+                .hasMessageContaining("Order placement is currently closed")
+                .hasMessageContaining("6:00 AM")
+                .hasMessageContaining("10:00 PM");
+    }
+
+    @Test
+    @DisplayName("Should accept order at exact opening time 06:00 AM IST (inclusive opening boundary)")
+    void shouldAcceptOrderAt0600() {
+        when(repository.findFirstByOrderByIdAsc()).thenReturn(Optional.of(defaultSettings));
+
+        LocalDateTime time = LocalDateTime.of(2026, 11, 21, 6, 0, 0);
         OrderBusinessSettingsService service = createServiceWithFixedClock(time, ZoneId.of("Asia/Kolkata"));
 
         service.validateOrderAcceptanceWindow(); // Should not throw
     }
 
     @Test
-    @DisplayName("Should accept order within business window at 12:00 PM")
-    void shouldAcceptOrderAtMidday() {
+    @DisplayName("Should accept order within business window at 12:00 PM IST (midday)")
+    void shouldAcceptOrderAt1200() {
         when(repository.findFirstByOrderByIdAsc()).thenReturn(Optional.of(defaultSettings));
 
-        LocalDateTime time = LocalDateTime.of(2026, 11, 10, 12, 0, 0);
+        LocalDateTime time = LocalDateTime.of(2026, 11, 21, 12, 0, 0);
         OrderBusinessSettingsService service = createServiceWithFixedClock(time, ZoneId.of("Asia/Kolkata"));
 
-        service.validateOrderAcceptanceWindow();
+        service.validateOrderAcceptanceWindow(); // Should not throw
     }
 
     @Test
-    @DisplayName("Should accept order within business window at 8:59:59 PM")
-    void shouldAcceptOrderJustBeforeClosing() {
+    @DisplayName("Should accept order within business window at 1:13 PM IST (13:13) - MUST BE OPEN")
+    void shouldAcceptOrderAt1313() {
         when(repository.findFirstByOrderByIdAsc()).thenReturn(Optional.of(defaultSettings));
 
-        LocalDateTime time = LocalDateTime.of(2026, 11, 10, 20, 59, 59);
+        LocalDateTime time = LocalDateTime.of(2026, 11, 21, 13, 13, 0);
         OrderBusinessSettingsService service = createServiceWithFixedClock(time, ZoneId.of("Asia/Kolkata"));
 
-        service.validateOrderAcceptanceWindow();
+        service.validateOrderAcceptanceWindow(); // Should not throw
     }
 
     @Test
-    @DisplayName("Should reject order before opening at 7:59:59 AM")
-    void shouldRejectOrderBeforeOpeningTime() {
+    @DisplayName("Should accept order within business window at 21:59 IST (9:59 PM - just before closing)")
+    void shouldAcceptOrderAt2159() {
         when(repository.findFirstByOrderByIdAsc()).thenReturn(Optional.of(defaultSettings));
 
-        LocalDateTime time = LocalDateTime.of(2026, 11, 10, 7, 59, 59);
+        LocalDateTime time = LocalDateTime.of(2026, 11, 21, 21, 59, 0);
+        OrderBusinessSettingsService service = createServiceWithFixedClock(time, ZoneId.of("Asia/Kolkata"));
+
+        service.validateOrderAcceptanceWindow(); // Should not throw
+    }
+
+    @Test
+    @DisplayName("Should reject order at exact closing time 22:00 IST (10:00 PM - exclusive cutoff boundary)")
+    void shouldRejectOrderAt2200() {
+        when(repository.findFirstByOrderByIdAsc()).thenReturn(Optional.of(defaultSettings));
+
+        LocalDateTime time = LocalDateTime.of(2026, 11, 21, 22, 0, 0);
         OrderBusinessSettingsService service = createServiceWithFixedClock(time, ZoneId.of("Asia/Kolkata"));
 
         assertThatThrownBy(service::validateOrderAcceptanceWindow)
                 .isInstanceOf(OrderCutoffException.class)
-                .hasMessageContaining("Order placement is currently closed");
+                .hasMessageContaining("Order placement is currently closed")
+                .hasMessageContaining("6:00 AM")
+                .hasMessageContaining("10:00 PM");
     }
 
     @Test
-    @DisplayName("Should reject order at exact closing time 9:00 PM (exclusive cutoff)")
-    void shouldRejectOrderAtExactClosingTime() {
+    @DisplayName("Should reject order after closing time at 22:01 IST (10:01 PM)")
+    void shouldRejectOrderAt2201() {
         when(repository.findFirstByOrderByIdAsc()).thenReturn(Optional.of(defaultSettings));
 
-        LocalDateTime time = LocalDateTime.of(2026, 11, 10, 21, 0, 0);
-        OrderBusinessSettingsService service = createServiceWithFixedClock(time, ZoneId.of("Asia/Kolkata"));
-
-        assertThatThrownBy(service::validateOrderAcceptanceWindow)
-                .isInstanceOf(OrderCutoffException.class)
-                .hasMessageContaining("Order placement is currently closed");
-    }
-
-    @Test
-    @DisplayName("Should reject order after closing time at 9:30 PM")
-    void shouldRejectOrderAfterClosingTime() {
-        when(repository.findFirstByOrderByIdAsc()).thenReturn(Optional.of(defaultSettings));
-
-        LocalDateTime time = LocalDateTime.of(2026, 11, 10, 21, 30, 0);
+        LocalDateTime time = LocalDateTime.of(2026, 11, 21, 22, 1, 0);
         OrderBusinessSettingsService service = createServiceWithFixedClock(time, ZoneId.of("Asia/Kolkata"));
 
         assertThatThrownBy(service::validateOrderAcceptanceWindow)
@@ -190,5 +206,59 @@ class OrderBusinessSettingsServiceTests {
         OrderBusinessSettingsResponse response = service.updateOrderAcceptanceStatus(false, "admin_user");
         assertThat(response.isOrderAcceptanceEnabled()).isFalse();
         verify(repository).save(any(OrderBusinessSettings.class));
+    }
+
+    @Test
+    @DisplayName("Should reject update if opening time equals closing time")
+    void shouldRejectEqualOpeningClosingTimes() {
+        when(repository.findFirstByOrderByIdAsc()).thenReturn(Optional.of(defaultSettings));
+
+        OrderBusinessSettingsService service = createServiceWithFixedClock(
+                LocalDateTime.now(), ZoneId.of("Asia/Kolkata")
+        );
+
+        UpdateOrderBusinessSettingsRequest invalidRequest = UpdateOrderBusinessSettingsRequest.builder()
+                .openingTime(LocalTime.of(10, 0))
+                .closingTime(LocalTime.of(10, 0))
+                .orderAcceptanceEnabled(true)
+                .timezone("Asia/Kolkata")
+                .build();
+
+        assertThatThrownBy(() -> service.updateSettings(invalidRequest, "admin"))
+                .isInstanceOf(OrderValidationException.class)
+                .hasMessageContaining("cannot be identical");
+    }
+
+    @Test
+    @DisplayName("Should update closing time and dynamically affect order acceptance window")
+    void shouldDynamicallyUpdateClosingTime() {
+        OrderBusinessSettings dynamicSettings = OrderBusinessSettings.builder()
+                .id(1L)
+                .orderAcceptanceEnabled(true)
+                .openingTime(LocalTime.of(6, 0))
+                .closingTime(LocalTime.of(22, 0))
+                .timezone("Asia/Kolkata")
+                .build();
+
+        when(repository.findFirstByOrderByIdAsc()).thenReturn(Optional.of(dynamicSettings));
+        when(repository.save(any(OrderBusinessSettings.class))).thenAnswer(i -> i.getArgument(0));
+
+        // 9:30 PM (21:30) - Allowed when closing is 22:00 (10:00 PM)
+        LocalDateTime time = LocalDateTime.of(2026, 11, 10, 21, 30, 0);
+        OrderBusinessSettingsService service = createServiceWithFixedClock(time, ZoneId.of("Asia/Kolkata"));
+        service.validateOrderAcceptanceWindow(); // Allowed
+
+        // Admin updates closing time from 22:00 to 21:00 (9:00 PM)
+        UpdateOrderBusinessSettingsRequest updateRequest = UpdateOrderBusinessSettingsRequest.builder()
+                .openingTime(LocalTime.of(6, 0))
+                .closingTime(LocalTime.of(21, 0))
+                .timezone("Asia/Kolkata")
+                .build();
+        service.updateSettings(updateRequest, "admin");
+
+        // Now 9:30 PM must be rejected immediately without restart
+        assertThatThrownBy(service::validateOrderAcceptanceWindow)
+                .isInstanceOf(OrderCutoffException.class)
+                .hasMessageContaining("Order placement is currently closed");
     }
 }

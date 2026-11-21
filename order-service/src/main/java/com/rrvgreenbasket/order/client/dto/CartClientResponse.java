@@ -1,5 +1,6 @@
 package com.rrvgreenbasket.order.client.dto;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.*;
 
@@ -18,6 +19,7 @@ public class CartClientResponse {
     private String customerPublicId;
     private String status;
     private String currency;
+    @JsonAlias({"totalAmount", "totalPrice"})
     private BigDecimal subtotal;
     private BigDecimal currentSubtotal;
     private Integer itemCount;

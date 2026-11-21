@@ -3,8 +3,8 @@ package com.rrvgreenbasket.order.service.impl;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.rrvgreenbasket.order.client.CartServiceClient;
+import com.rrvgreenbasket.order.client.CustomerServiceClient;
 import com.rrvgreenbasket.order.client.DeliveryServiceClient;
-import com.rrvgreenbasket.order.client.InventoryServiceClient;
 import com.rrvgreenbasket.order.client.ProductServiceClient;
 import com.rrvgreenbasket.order.client.dto.*;
 import com.rrvgreenbasket.order.dto.request.AddressDto;
@@ -12,6 +12,7 @@ import com.rrvgreenbasket.order.dto.request.CreateOrderRequest;
 import com.rrvgreenbasket.order.dto.request.PaymentEventRequest;
 import com.rrvgreenbasket.order.dto.response.*;
 import com.rrvgreenbasket.order.entity.Order;
+import com.rrvgreenbasket.order.entity.OrderBusinessSettings;
 import com.rrvgreenbasket.order.entity.OrderItem;
 import com.rrvgreenbasket.order.entity.OrderStatusHistory;
 import com.rrvgreenbasket.order.enums.OrderStatus;
@@ -34,9 +35,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.ZonedDateTime;
+import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
@@ -55,9 +54,30 @@ public class OrderServiceImpl implements OrderService {
     private final OrderBusinessSettingsService settingsService;
     private final CartServiceClient cartServiceClient;
     private final ProductServiceClient productServiceClient;
-    private final InventoryServiceClient inventoryServiceClient;
     private final DeliveryServiceClient deliveryServiceClient;
+    private final CustomerServiceClient customerServiceClient;
     private final ObjectMapper objectMapper;
+    private final Clock clock;
+
+    private Order findOrderByIdentifier(String identifier) {
+        if (identifier == null || identifier.isBlank()) {
+            throw new OrderNotFoundException("Order identifier cannot be empty");
+        }
+        String trimmed = identifier.trim();
+        Optional<Order> order;
+        if (trimmed.startsWith("RRV-")) {
+            order = orderRepository.findByOrderNumber(trimmed);
+            if (order.isEmpty()) {
+                order = orderRepository.findByPublicId(trimmed);
+            }
+        } else {
+            order = orderRepository.findByPublicId(trimmed);
+            if (order.isEmpty()) {
+                order = orderRepository.findByOrderNumber(trimmed);
+            }
+        }
+        return order.orElseThrow(() -> new OrderNotFoundException("Order not found with ID: " + identifier));
+    }
 
     @Override
     @Transactional
@@ -84,7 +104,7 @@ public class OrderServiceImpl implements OrderService {
             throw new OrderValidationException("Cannot place order with an empty shopping cart");
         }
 
-        // 4. Pre-checkout cart validation (checks stock and active status)
+        // 4. Pre-checkout cart validation (checks availability and active status)
         try {
             CartValidationClientResponse cartValidation = cartServiceClient.validateCart(customerPublicId);
             if (cartValidation != null && Boolean.FALSE.equals(cartValidation.getIsValid())) {
@@ -100,25 +120,130 @@ public class OrderServiceImpl implements OrderService {
             log.warn("Cart validation probe returned warning, continuing with individual product verification: {}", e.getMessage());
         }
 
-        // 5. Verify delivery address and geographical boundary coverage
-        AddressDto address = request.getDeliveryAddress();
-        if (address.getLatitude() == null || address.getLongitude() == null) {
+        // 5. Retrieve authoritative registered customer profile details
+        String registeredCustomerName = null;
+        String registeredCustomerMobile = null;
+        try {
+            CustomerClientResponse profile = customerServiceClient.getCustomerProfile(customerPublicId);
+            if (profile != null) {
+                registeredCustomerName = profile.getFullName();
+                registeredCustomerMobile = profile.getMobileNumber();
+                log.info("Authoritative customer details retrieved: name='{}', mobile='{}'",
+                        registeredCustomerName, registeredCustomerMobile);
+            }
+        } catch (Exception e) {
+            log.warn("Could not retrieve registered customer profile for '{}': {}", customerPublicId, e.getMessage());
+        }
+
+        // 6. Verify delivery address and geographical boundary coverage
+        AddressDto inboundAddress = request.getDeliveryAddress();
+        if (inboundAddress.getLatitude() == null || inboundAddress.getLongitude() == null) {
             throw new OrderValidationException("Delivery coordinates (latitude and longitude) are mandatory");
         }
 
         DeliveryAvailabilityClientResponse availability = deliveryServiceClient.checkAvailability(
-                address.getLatitude().doubleValue(),
-                address.getLongitude().doubleValue(),
-                address.getAddressLine()
+                inboundAddress.getLatitude().doubleValue(),
+                inboundAddress.getLongitude().doubleValue(),
+                inboundAddress.getAddressLine()
         );
 
         if (availability == null || !Boolean.TRUE.equals(availability.getAvailable())) {
             throw new OrderValidationException("Delivery is not available at the selected location");
         }
 
-        // 6. Calculate cart subtotal from live product prices
+        // 7. Resolve delivery address fields and ensure proper persistence
+        String recipientName = inboundAddress.getRecipientName();
+        String recipientMobile = inboundAddress.getRecipientMobile();
+        String addressLine1 = inboundAddress.getAddressLine1();
+        String addressLine2 = inboundAddress.getAddressLine2();
+        String landmark = inboundAddress.getLandmark();
+        String city = inboundAddress.getCity();
+        String state = inboundAddress.getState();
+        String pincode = inboundAddress.getPincode();
+        String country = inboundAddress.getCountry() != null ? inboundAddress.getCountry() : "India";
+        String addressPublicId = request.getAddressId() != null && !request.getAddressId().isBlank()
+                ? request.getAddressId().trim()
+                : inboundAddress.getAddressPublicId();
+
+        if (addressPublicId != null && !addressPublicId.isBlank()) {
+            // Selected existing address from customer address table
+            try {
+                AddressClientResponse savedAddr = customerServiceClient.getAddress(customerPublicId, addressPublicId);
+                if (savedAddr != null) {
+                    if (addressLine1 == null || addressLine1.isBlank()) {
+                        addressLine1 = savedAddr.getAddressLine1();
+                    }
+                    if (addressLine2 == null || addressLine2.isBlank()) {
+                        addressLine2 = savedAddr.getAddressLine2();
+                    }
+                    if (landmark == null || landmark.isBlank()) {
+                        landmark = savedAddr.getLandmark();
+                    }
+                    if (city == null || city.isBlank()) {
+                        city = savedAddr.getCity();
+                    }
+                    if (state == null || state.isBlank()) {
+                        state = savedAddr.getState();
+                    }
+                    if (pincode == null || pincode.isBlank()) {
+                        pincode = savedAddr.getPincode();
+                    }
+                    if (savedAddr.getCountry() != null && !savedAddr.getCountry().isBlank()) {
+                        country = savedAddr.getCountry();
+                    }
+                    // If recipient details were not overridden in the request, use the saved address receiver details
+                    if (recipientName == null || recipientName.isBlank()) {
+                        recipientName = savedAddr.getReceiverName();
+                    }
+                    if (recipientMobile == null || recipientMobile.isBlank()) {
+                        recipientMobile = savedAddr.getReceiverMobile();
+                    }
+                    log.info("Selected saved address '{}' loaded. Recipient for order: '{}' ({})",
+                            addressPublicId, recipientName, recipientMobile);
+                }
+            } catch (Exception e) {
+                log.warn("Failed to load saved address '{}' from customer-service: {}", addressPublicId, e.getMessage());
+            }
+        } else if (Boolean.TRUE.equals(request.getSaveAddress())) {
+            // New address during checkout; persist into customer address table
+            try {
+                AddressClientResponse persistedAddr = customerServiceClient.saveAddress(customerPublicId, inboundAddress);
+                if (persistedAddr != null && persistedAddr.getId() != null) {
+                    addressPublicId = persistedAddr.getId();
+                    log.info("Persisted new delivery address to Customer Address Table with publicId='{}'", addressPublicId);
+                }
+            } catch (Exception e) {
+                log.warn("Could not persist new address in Customer Address Table: {}", e.getMessage());
+            }
+        }
+
+        // Fallbacks for recipient details if still missing
+        if ((recipientName == null || recipientName.isBlank()) && registeredCustomerName != null) {
+            recipientName = registeredCustomerName;
+        }
+        if ((recipientMobile == null || recipientMobile.isBlank()) && registeredCustomerMobile != null) {
+            recipientMobile = registeredCustomerMobile;
+        }
+
+        // Complete delivery address snapshot (fully independent and immutable)
+        AddressDto completeDeliverySnapshot = AddressDto.builder()
+                .recipientName(recipientName)
+                .recipientMobile(recipientMobile)
+                .addressLine1(addressLine1)
+                .addressLine2(addressLine2)
+                .addressLine(inboundAddress.getAddressLine())
+                .landmark(landmark)
+                .city(city)
+                .state(state)
+                .pincode(pincode)
+                .country(country)
+                .latitude(inboundAddress.getLatitude())
+                .longitude(inboundAddress.getLongitude())
+                .addressPublicId(addressPublicId)
+                .build();
+
+        // 8. Calculate cart subtotal from live product prices
         BigDecimal subtotal = BigDecimal.ZERO;
-        List<ReservationItemClientDto> reservationItems = new ArrayList<>();
         List<OrderItem> orderItemsToSave = new ArrayList<>();
 
         for (CartItemClientDto cartItem : cart.getItems()) {
@@ -136,12 +261,6 @@ public class OrderServiceImpl implements OrderService {
             BigDecimal itemTotal = unitPrice.multiply(quantity).setScale(2, RoundingMode.HALF_UP);
             subtotal = subtotal.add(itemTotal);
 
-            reservationItems.add(ReservationItemClientDto.builder()
-                    .productPublicId(cartItem.getProductPublicId())
-                    .quantity(quantity)
-                    .unitOfMeasure(cartItem.getUnitOfMeasure() != null ? cartItem.getUnitOfMeasure() : "KG")
-                    .build());
-
             OrderItem orderItem = OrderItem.builder()
                     .publicId(UUID.randomUUID().toString())
                     .productPublicId(cartItem.getProductPublicId())
@@ -158,7 +277,7 @@ public class OrderServiceImpl implements OrderService {
 
         subtotal = subtotal.setScale(2, RoundingMode.HALF_UP);
 
-        // 7. Validate minimum order amount
+        // 9. Validate minimum order amount
         BigDecimal minOrderAmount = availability.getMinimumOrderAmount() != null
                 ? availability.getMinimumOrderAmount()
                 : BigDecimal.ZERO;
@@ -170,7 +289,7 @@ public class OrderServiceImpl implements OrderService {
             ));
         }
 
-        // 8. Calculate delivery charge and free delivery threshold
+        // 10. Calculate delivery charge and free delivery threshold
         BigDecimal deliveryCharge;
         if (availability.getFreeDeliveryThreshold() != null
                 && subtotal.compareTo(availability.getFreeDeliveryThreshold()) >= 0) {
@@ -185,40 +304,42 @@ public class OrderServiceImpl implements OrderService {
         BigDecimal discountAmount = BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
         BigDecimal totalAmount = subtotal.add(deliveryCharge).subtract(discountAmount).setScale(2, RoundingMode.HALF_UP);
 
-        // 9. Calculate promised next-day delivery date
+        // 11. Calculate promised next-day delivery date
         ZonedDateTime currentBusinessTime = settingsService.getCurrentBusinessDateTime();
         LocalDate promisedDeliveryDate = settingsService.calculatePromisedDeliveryDate(currentBusinessTime.toLocalDate());
 
-        // 10. Generate public identifiers
+        // 12. Generate public identifiers
         String orderPublicId = UUID.randomUUID().toString();
         String orderNumber = generateOrderNumber(currentBusinessTime.toLocalDate());
 
-        // 11. Reserve stock with Inventory Service (External Call)
-        StockReservationClientRequest reservationRequest = StockReservationClientRequest.builder()
-                .orderPublicId(orderPublicId)
-                .idempotencyKey("res-" + orderPublicId)
-                .ttlMinutes(120)
-                .items(reservationItems)
-                .build();
+        // 13. Configure payment method and initial statuses
+        PaymentMethod paymentMethod = request.getPaymentMethod() != null ? request.getPaymentMethod() : PaymentMethod.COD;
+        OrderStatus initialStatus;
+        PaymentStatus initialPaymentStatus;
 
-        inventoryServiceClient.createReservation(reservationRequest);
-
-        // 12. Persist order and snapshots
-        String addressSnapshotJson;
-        try {
-            addressSnapshotJson = objectMapper.writeValueAsString(address);
-        } catch (JsonProcessingException e) {
-            addressSnapshotJson = "{}";
+        if (paymentMethod == PaymentMethod.COD) {
+            initialStatus = OrderStatus.CONFIRMED;
+            initialPaymentStatus = PaymentStatus.COD_PENDING;
+        } else {
+            initialStatus = OrderStatus.PLACED;
+            initialPaymentStatus = PaymentStatus.PENDING;
         }
 
-        PaymentMethod paymentMethod = request.getPaymentMethod() != null ? request.getPaymentMethod() : PaymentMethod.COD;
-        OrderStatus initialStatus = OrderStatus.PLACED;
-        PaymentStatus initialPaymentStatus = paymentMethod == PaymentMethod.COD ? PaymentStatus.COD_PENDING : PaymentStatus.PENDING;
+        // 14. Serialize complete immutable address snapshot
+        String addressSnapshotJson;
+        try {
+            addressSnapshotJson = objectMapper.writeValueAsString(completeDeliverySnapshot);
+        } catch (JsonProcessingException e) {
+            log.error("Failed to serialize address snapshot: {}", e.getMessage());
+            addressSnapshotJson = "{}";
+        }
 
         Order order = Order.builder()
                 .publicId(orderPublicId)
                 .orderNumber(orderNumber)
                 .customerPublicId(customerPublicId)
+                .registeredCustomerName(registeredCustomerName)
+                .registeredCustomerMobile(registeredCustomerMobile)
                 .deliveryZonePublicId(availability.getZonePublicId())
                 .deliveryZoneNameSnapshot(availability.getZoneName())
                 .orderStatus(initialStatus)
@@ -230,8 +351,8 @@ public class OrderServiceImpl implements OrderService {
                 .totalAmount(totalAmount)
                 .minimumOrderAmountSnapshot(minOrderAmount)
                 .deliveryAddressSnapshot(addressSnapshotJson)
-                .deliveryLatitude(address.getLatitude())
-                .deliveryLongitude(address.getLongitude())
+                .deliveryLatitude(inboundAddress.getLatitude())
+                .deliveryLongitude(inboundAddress.getLongitude())
                 .promisedDeliveryDate(promisedDeliveryDate)
                 .orderPlacedAt(currentBusinessTime.toLocalDateTime())
                 .idempotencyKey(request.getIdempotencyKey())
@@ -243,27 +364,19 @@ public class OrderServiceImpl implements OrderService {
 
         Order savedOrder = orderRepository.save(order);
 
-        // Record initial status history
-        recordStatusHistory(savedOrder.getId(), null, OrderStatus.PLACED, customerPublicId, "Order placed successfully by customer");
-
-        // 13. Auto-confirm COD orders
+        // 15. Record initial status history
         if (paymentMethod == PaymentMethod.COD) {
             log.info("Auto-confirming COD order: {}", savedOrder.getOrderNumber());
-            try {
-                inventoryServiceClient.confirmReservation(orderPublicId);
-                savedOrder.setOrderStatus(OrderStatus.CONFIRMED);
-                orderRepository.save(savedOrder);
-                recordStatusHistory(savedOrder.getId(), OrderStatus.PLACED, OrderStatus.CONFIRMED, "SYSTEM", "Cash on Delivery order confirmed");
-            } catch (Exception e) {
-                log.error("Failed to auto-confirm COD reservation for order {}: {}", orderPublicId, e.getMessage());
-            }
+            recordStatusHistory(savedOrder.getId(), null, OrderStatus.CONFIRMED, customerPublicId, "Cash on Delivery order placed and confirmed");
+        } else {
+            recordStatusHistory(savedOrder.getId(), null, OrderStatus.PLACED, customerPublicId, "Order placed successfully by customer");
         }
 
-        // 14. Clear cart after successful order placement
+        // 16. Clear cart after successful order placement
         cartServiceClient.clearCart(customerPublicId);
 
-        log.info("Order created successfully: orderNumber={}, total={}, promisedDelivery={}",
-                savedOrder.getOrderNumber(), savedOrder.getTotalAmount(), savedOrder.getPromisedDeliveryDate());
+        log.info("Order created successfully: orderNumber={}, status={}, total={}, promisedDelivery={}",
+                savedOrder.getOrderNumber(), savedOrder.getOrderStatus(), savedOrder.getTotalAmount(), savedOrder.getPromisedDeliveryDate());
 
         return mapToOrderResponse(savedOrder);
     }
@@ -278,8 +391,7 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional(readOnly = true)
     public OrderResponse getOrderDetails(String orderPublicId, String customerPublicId) {
-        Order order = orderRepository.findByPublicId(orderPublicId)
-                .orElseThrow(() -> new OrderNotFoundException("Order not found with ID: " + orderPublicId));
+        Order order = findOrderByIdentifier(orderPublicId);
 
         if (!order.getCustomerPublicId().equals(customerPublicId)) {
             throw new UnauthorizedOrderAccessException("You do not have permission to view this order");
@@ -293,11 +405,10 @@ public class OrderServiceImpl implements OrderService {
     public OrderResponse cancelOrder(String orderPublicId, String customerPublicId, String reason) {
         log.info("Customer '{}' cancelling order: {}", customerPublicId, orderPublicId);
 
-        Order order = orderRepository.findByPublicId(orderPublicId)
-                .orElseThrow(() -> new OrderNotFoundException("Order not found with ID: " + orderPublicId));
+        Order order = findOrderByIdentifier(orderPublicId);
 
         if (!order.getCustomerPublicId().equals(customerPublicId)) {
-            throw new UnauthorizedOrderAccessException("You do not have permission to cancel this order");
+            throw new UnauthorizedOrderAccessException("You are not authorized to cancel this order");
         }
 
         if (!order.getOrderStatus().isCancellableByCustomer()) {
@@ -306,13 +417,31 @@ public class OrderServiceImpl implements OrderService {
             );
         }
 
-        // Release inventory reservation
-        inventoryServiceClient.releaseReservation(orderPublicId);
+        OrderBusinessSettings settings = settingsService.getSettingsEntity();
+        ZoneId storeZone = ZoneId.of(settings.getTimezone() != null ? settings.getTimezone() : "Asia/Kolkata");
+        ZonedDateTime nowInStore = ZonedDateTime.now(clock.withZone(storeZone));
+        LocalDate currentDate = nowInStore.toLocalDate();
+        LocalTime currentTime = nowInStore.toLocalTime();
+
+        LocalDate orderDate = order.getOrderPlacedAt() != null
+                ? order.getOrderPlacedAt().toLocalDate()
+                : (order.getCreatedAt() != null ? order.getCreatedAt().toLocalDate() : currentDate);
+
+        if (!orderDate.equals(currentDate)) {
+            throw new OrderValidationException("Order cancellation is allowed only on the order placement date.");
+        }
+
+        LocalTime opening = settings.getOpeningTime();
+        LocalTime closing = settings.getClosingTime();
+
+        if (currentTime.isBefore(opening) || !currentTime.isBefore(closing)) {
+            throw new OrderValidationException("Order cancellation is available only during store operating hours.");
+        }
 
         OrderStatus previousStatus = order.getOrderStatus();
         order.setOrderStatus(OrderStatus.CANCELLED);
-        order.setCancelledAt(LocalDateTime.now());
-        order.setCancellationReason(reason != null ? reason.trim() : "Cancelled by customer");
+        order.setCancelledAt(nowInStore.toLocalDateTime());
+        order.setCancellationReason(reason != null && !reason.isBlank() ? reason.trim() : "Cancelled by customer");
 
         Order updated = orderRepository.save(order);
         recordStatusHistory(updated.getId(), previousStatus, OrderStatus.CANCELLED, customerPublicId, reason);
@@ -324,8 +453,7 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional(readOnly = true)
     public OrderStatusHistoryResponse getLatestOrderStatus(String orderPublicId, String customerPublicId) {
-        Order order = orderRepository.findByPublicId(orderPublicId)
-                .orElseThrow(() -> new OrderNotFoundException("Order not found with ID: " + orderPublicId));
+        Order order = findOrderByIdentifier(orderPublicId);
 
         if (!order.getCustomerPublicId().equals(customerPublicId)) {
             throw new UnauthorizedOrderAccessException("You do not have permission to view status for this order");
@@ -334,6 +462,8 @@ public class OrderServiceImpl implements OrderService {
         List<OrderStatusHistory> history = statusHistoryRepository.findByOrderIdOrderByCreatedAtAsc(order.getId());
         if (history.isEmpty()) {
             return OrderStatusHistoryResponse.builder()
+                    .id(0L)
+                    .publicId("initial")
                     .newStatus(order.getOrderStatus())
                     .changedBy("SYSTEM")
                     .timestamp(order.getCreatedAt())
@@ -342,6 +472,8 @@ public class OrderServiceImpl implements OrderService {
 
         OrderStatusHistory latest = history.get(history.size() - 1);
         return OrderStatusHistoryResponse.builder()
+                .id(latest.getId())
+                .publicId("history-" + latest.getId())
                 .previousStatus(latest.getPreviousStatus())
                 .newStatus(latest.getNewStatus())
                 .changedBy(latest.getChangedBy())
@@ -383,7 +515,9 @@ public class OrderServiceImpl implements OrderService {
                 String term = "%" + search.trim().toLowerCase() + "%";
                 Predicate numberMatch = cb.like(cb.lower(root.get("orderNumber")), term);
                 Predicate zoneMatch = cb.like(cb.lower(root.get("deliveryZoneNameSnapshot")), term);
-                predicates.add(cb.or(numberMatch, zoneMatch));
+                Predicate nameMatch = cb.like(cb.lower(root.get("registeredCustomerName")), term);
+                Predicate mobileMatch = cb.like(cb.lower(root.get("registeredCustomerMobile")), term);
+                predicates.add(cb.or(numberMatch, zoneMatch, nameMatch, mobileMatch));
             }
 
             return cb.and(predicates.toArray(new Predicate[0]));
@@ -396,8 +530,7 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional(readOnly = true)
     public OrderResponse getAdminOrderDetails(String orderPublicId) {
-        Order order = orderRepository.findByPublicId(orderPublicId)
-                .orElseThrow(() -> new OrderNotFoundException("Order not found with ID: " + orderPublicId));
+        Order order = findOrderByIdentifier(orderPublicId);
         return mapToOrderResponse(order);
     }
 
@@ -406,8 +539,7 @@ public class OrderServiceImpl implements OrderService {
     public OrderResponse updateOrderStatus(String orderPublicId, OrderStatus newStatus, String reason, String changedBy) {
         log.info("Admin/System '{}' updating status of order '{}' to: {}", changedBy, orderPublicId, newStatus);
 
-        Order order = orderRepository.findByPublicId(orderPublicId)
-                .orElseThrow(() -> new OrderNotFoundException("Order not found with ID: " + orderPublicId));
+        Order order = findOrderByIdentifier(orderPublicId);
 
         OrderStatus currentStatus = order.getOrderStatus();
         if (!currentStatus.canTransitionTo(newStatus)) {
@@ -416,13 +548,11 @@ public class OrderServiceImpl implements OrderService {
             );
         }
 
-        // Handle inventory confirmation or release on specific transitions
         if (newStatus == OrderStatus.CANCELLED) {
-            inventoryServiceClient.releaseReservation(orderPublicId);
-            order.setCancelledAt(LocalDateTime.now());
+            OrderBusinessSettings settings = settingsService.getSettingsEntity();
+            ZoneId storeZone = ZoneId.of(settings.getTimezone() != null ? settings.getTimezone() : "Asia/Kolkata");
+            order.setCancelledAt(LocalDateTime.now(clock.withZone(storeZone)));
             order.setCancellationReason(reason);
-        } else if (newStatus == OrderStatus.CONFIRMED && currentStatus == OrderStatus.PLACED) {
-            inventoryServiceClient.confirmReservation(orderPublicId);
         }
 
         order.setOrderStatus(newStatus);
@@ -433,9 +563,26 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
+    @Transactional
+    public void deleteCancelledOrder(String orderPublicId, String adminUser) {
+        log.info("Admin '{}' attempting to delete cancelled order '{}'", adminUser, orderPublicId);
+        Order order = findOrderByIdentifier(orderPublicId);
+
+        if (order.getOrderStatus() != OrderStatus.CANCELLED) {
+            throw new OrderValidationException("Only cancelled orders can be permanently deleted");
+        }
+
+        statusHistoryRepository.deleteByOrderId(order.getId());
+        orderRepository.delete(order);
+        log.info("Cancelled order '{}' permanently deleted by admin '{}'", orderPublicId, adminUser);
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public OrderStatisticsResponse getAdminStatistics() {
-        LocalDate today = LocalDate.now();
+        OrderBusinessSettings settings = settingsService.getSettingsEntity();
+        ZoneId storeZone = ZoneId.of(settings.getTimezone() != null ? settings.getTimezone() : "Asia/Kolkata");
+        LocalDate today = LocalDate.now(clock.withZone(storeZone));
         LocalDateTime startOfToday = today.atStartOfDay();
         LocalDateTime endOfToday = today.atTime(23, 59, 59);
 
@@ -470,8 +617,7 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional(readOnly = true)
     public OrderDetailsDto getOrderForPayment(String orderPublicId) {
-        Order order = orderRepository.findByPublicId(orderPublicId)
-                .orElseThrow(() -> new OrderNotFoundException("Order not found with ID: " + orderPublicId));
+        Order order = findOrderByIdentifier(orderPublicId);
 
         boolean paymentEligible = order.getOrderStatus() == OrderStatus.PLACED
                 && order.getPaymentStatus() == PaymentStatus.PENDING;
@@ -492,11 +638,9 @@ public class OrderServiceImpl implements OrderService {
     public void handlePaymentEvent(String orderPublicId, PaymentEventRequest request) {
         log.info("Processing payment event '{}' for order: {}", request.getEventType(), orderPublicId);
 
-        Order order = orderRepository.findByPublicId(orderPublicId)
-                .orElseThrow(() -> new OrderNotFoundException("Order not found with ID: " + orderPublicId));
+        Order order = findOrderByIdentifier(orderPublicId);
 
         if ("PAYMENT_SUCCESS".equalsIgnoreCase(request.getEventType()) || "COMPLETED".equalsIgnoreCase(request.getStatus())) {
-            inventoryServiceClient.confirmReservation(orderPublicId);
             order.setPaymentStatus(PaymentStatus.COMPLETED);
 
             if (order.getOrderStatus() == OrderStatus.PLACED) {
@@ -509,7 +653,6 @@ public class OrderServiceImpl implements OrderService {
             log.info("Order '{}' confirmed following successful online payment", orderPublicId);
 
         } else if ("PAYMENT_FAILED".equalsIgnoreCase(request.getEventType()) || "FAILED".equalsIgnoreCase(request.getStatus())) {
-            inventoryServiceClient.releaseReservation(orderPublicId);
             order.setPaymentStatus(PaymentStatus.FAILED);
             OrderStatus prev = order.getOrderStatus();
             order.setOrderStatus(OrderStatus.FAILED);
@@ -548,9 +691,29 @@ public class OrderServiceImpl implements OrderService {
             log.debug("Could not parse address snapshot: {}", e.getMessage());
         }
 
+        String recipientName = addressDto != null ? addressDto.getRecipientName() : null;
+        String recipientMobile = addressDto != null ? addressDto.getRecipientMobile() : null;
+
+        String regName = order.getRegisteredCustomerName();
+        if ((regName == null || regName.isBlank()) && recipientName != null) {
+            regName = recipientName;
+        }
+        String regMobile = order.getRegisteredCustomerMobile();
+        if ((regMobile == null || regMobile.isBlank()) && recipientMobile != null) {
+            regMobile = recipientMobile;
+        }
+
+        CustomerContactDto customerContact = CustomerContactDto.builder()
+                .registeredName(regName)
+                .registeredMobile(regMobile)
+                .customerPublicId(order.getCustomerPublicId())
+                .build();
+
         List<OrderItemResponse> itemResponses = order.getItems().stream()
                 .map(i -> OrderItemResponse.builder()
+                        .id(i.getPublicId())
                         .publicId(i.getPublicId())
+                        .orderItemPublicId(i.getPublicId())
                         .productPublicId(i.getProductPublicId())
                         .productName(i.getProductNameSnapshot())
                         .productImage(i.getProductImageSnapshot())
@@ -564,6 +727,8 @@ public class OrderServiceImpl implements OrderService {
         List<OrderStatusHistoryResponse> historyResponses = statusHistoryRepository
                 .findByOrderIdOrderByCreatedAtAsc(order.getId()).stream()
                 .map(h -> OrderStatusHistoryResponse.builder()
+                        .id(h.getId())
+                        .publicId("history-" + h.getId())
                         .previousStatus(h.getPreviousStatus())
                         .newStatus(h.getNewStatus())
                         .changedBy(h.getChangedBy())
@@ -572,10 +737,34 @@ public class OrderServiceImpl implements OrderService {
                         .build())
                 .collect(Collectors.toList());
 
+        OrderBusinessSettings settings = settingsService.getSettingsEntity();
+        ZoneId storeZone = ZoneId.of(settings.getTimezone() != null ? settings.getTimezone() : "Asia/Kolkata");
+        ZonedDateTime nowInStore = ZonedDateTime.now(clock.withZone(storeZone));
+        LocalDate currentDate = nowInStore.toLocalDate();
+        LocalTime currentTime = nowInStore.toLocalTime();
+
+        LocalDate orderDate = order.getOrderPlacedAt() != null
+                ? order.getOrderPlacedAt().toLocalDate()
+                : (order.getCreatedAt() != null ? order.getCreatedAt().toLocalDate() : currentDate);
+
+        LocalTime openingTime = settings.getOpeningTime();
+        LocalTime closingTime = settings.getClosingTime();
+        LocalDateTime cancellationDeadline = orderDate.atTime(closingTime);
+
+        boolean isSameDay = orderDate.equals(currentDate);
+        boolean isWithinHours = !currentTime.isBefore(openingTime) && currentTime.isBefore(closingTime);
+        boolean isStatusCancellable = order.getOrderStatus() != null && order.getOrderStatus().isCancellableByCustomer();
+        boolean cancellationAllowed = isSameDay && isWithinHours && isStatusCancellable;
+
         return OrderResponse.builder()
                 .orderPublicId(order.getPublicId())
                 .orderNumber(order.getOrderNumber())
                 .customerPublicId(order.getCustomerPublicId())
+                .registeredCustomerName(regName)
+                .registeredCustomerMobile(regMobile)
+                .customer(customerContact)
+                .recipientName(recipientName)
+                .recipientMobile(recipientMobile)
                 .deliveryZonePublicId(order.getDeliveryZonePublicId())
                 .deliveryZoneName(order.getDeliveryZoneNameSnapshot())
                 .orderStatus(order.getOrderStatus())
@@ -593,6 +782,11 @@ public class OrderServiceImpl implements OrderService {
                 .orderPlacedAt(order.getOrderPlacedAt())
                 .cancelledAt(order.getCancelledAt())
                 .cancellationReason(order.getCancellationReason())
+                .cancellationAllowed(cancellationAllowed)
+                .cancellationDeadline(cancellationDeadline)
+                .orderDate(orderDate)
+                .currentStoreOpeningTime(openingTime)
+                .currentStoreClosingTime(closingTime)
                 .items(itemResponses)
                 .statusHistory(historyResponses)
                 .build();

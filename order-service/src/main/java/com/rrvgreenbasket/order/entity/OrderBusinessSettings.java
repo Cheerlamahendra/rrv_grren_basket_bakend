@@ -4,6 +4,7 @@ import com.rrvgreenbasket.order.enums.DeliveryType;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.Type;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
@@ -29,13 +30,15 @@ public class OrderBusinessSettings {
     @Builder.Default
     private Boolean orderAcceptanceEnabled = true;
 
+    @Type(LocalTimeUserType.class)
     @Column(name = "opening_time", nullable = false)
     @Builder.Default
-    private LocalTime openingTime = LocalTime.of(8, 0);
+    private LocalTime openingTime = LocalTime.of(6, 0);
 
+    @Type(LocalTimeUserType.class)
     @Column(name = "closing_time", nullable = false)
     @Builder.Default
-    private LocalTime closingTime = LocalTime.of(21, 0);
+    private LocalTime closingTime = LocalTime.of(22, 0);
 
     @Enumerated(EnumType.STRING)
     @Column(name = "delivery_type", length = 30, nullable = false)

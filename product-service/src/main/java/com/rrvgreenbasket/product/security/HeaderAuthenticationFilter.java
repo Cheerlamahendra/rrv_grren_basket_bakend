@@ -3,6 +3,7 @@ package com.rrvgreenbasket.product.security;
 import com.rrvgreenbasket.product.client.AuthServiceClient;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -35,16 +36,18 @@ public class HeaderAuthenticationFilter extends OncePerRequestFilter {
             JwtTokenProvider jwtTokenProvider,
             AuthServiceClient authServiceClient,
             NonceReplayCache nonceReplayCache,
-            @Value("${app.security.internal-service-secret:c8f7e2d1a5b49382716054321fedcba9876543210abcdef0123456789abcdef0}") String internalSecret) {
+            @Value("${app.security.internal-service-secret:RQpmB5hGO2NsLNE7OnwXo5NfNtEJj+j+461g0oEeGunJPZ4iYQEGr+uk5M3hAfgDg26IDtmA9N2RJbFXkCLrqQ==}") String internalSecret) {
         this.jwtTokenProvider = jwtTokenProvider;
         this.authServiceClient = authServiceClient;
         this.nonceReplayCache = nonceReplayCache;
 
-        byte[] keyBytes = internalSecret.getBytes(StandardCharsets.UTF_8);
-        if (keyBytes.length < 32) {
-            byte[] padded = new byte[32];
-            System.arraycopy(keyBytes, 0, padded, 0, keyBytes.length);
-            keyBytes = padded;
+        if (!StringUtils.hasText(internalSecret)) {
+            throw new IllegalStateException("Internal service secret is missing. Set app.security.internal-service-secret or INTERNAL_SERVICE_SECRET.");
+        }
+
+        byte[] keyBytes = Decoders.BASE64.decode(internalSecret.trim());
+        if (keyBytes.length < 64) {
+            throw new IllegalStateException("Gateway assertion secret must contain at least 64 bytes (512 bits) for HS512 algorithm. Current key size: " + (keyBytes.length * 8) + " bits");
         }
         this.internalKey = Keys.hmacShaKeyFor(keyBytes);
     }

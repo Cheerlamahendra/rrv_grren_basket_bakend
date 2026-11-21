@@ -39,4 +39,7 @@ public interface CustomerAddressRepository extends JpaRepository<CustomerAddress
     void resetDefaultAddressesForCustomer(@Param("customerId") Long customerId);
 
     Optional<CustomerAddress> findFirstByCustomerIdOrderByUpdatedAtDesc(Long customerId);
+
+    Optional<CustomerAddress> findFirstByCustomerIdAndAddressLine1AndPincodeAndReceiverMobile(
+            Long customerId, String addressLine1, String pincode, String receiverMobile);
 }

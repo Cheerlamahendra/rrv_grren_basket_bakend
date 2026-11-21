@@ -18,7 +18,7 @@ public class OpenApiConfig {
                 .info(new Info()
                         .title("RRV Green Basket - Order Service API")
                         .version("1.0.0")
-                        .description("Microservice for Order Placement, Next-Day Delivery Scheduling, Timing Cutoffs, Inventory Reservation & Confirmation, Pricing Calculation, and Order Lifecycle Management")
+                        .description("Microservice for Order Placement, Next-Day Delivery Scheduling, Timing Cutoffs, Pricing Calculation, and Order Lifecycle Management")
                         .contact(new Contact().name("RRV Green Basket Engineering").email("dev@rrvgreenbasket.com")))
                 .addSecurityItem(new SecurityRequirement().addList("bearerAuth"))
                 .components(new Components()

@@ -1,5 +1,6 @@
 package com.rrvgreenbasket.auth.service.impl;
 
+import com.rrvgreenbasket.auth.dto.response.CustomerProfileDto;
 import com.rrvgreenbasket.auth.client.CustomerServiceClient;
 import com.rrvgreenbasket.auth.constants.AuthConstants;
 import com.rrvgreenbasket.auth.dto.request.*;
@@ -35,7 +36,7 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
+import com.rrvgreenbasket.auth.dto.response.CustomerProfileDto;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Optional;
@@ -251,7 +252,7 @@ public class AuthServiceImpl implements AuthService {
                 .refreshToken(refreshToken)
                 .tokenType(AuthConstants.TOKEN_TYPE_BEARER)
                 .expiresInSeconds(accessExpirationMs / 1000)
-                .user(userMapper.toSummaryResponse(activeUser))
+                .user(userMapper.toSummaryResponse(activeUser,fullName))
                 .build();
     }
 
@@ -345,13 +346,24 @@ public class AuthServiceImpl implements AuthService {
 
         auditService.logEvent(user, "CUSTOMER_LOGIN_SUCCESS", true, clientIp,
                 "Customer authenticated via OTP: " + normalizedMobile + ", session=" + session.getSessionId());
-
+        String fullName = null;
+        try {
+            CustomerProfileDto customerProfile = customerServiceClient.getCustomerProfile(user.getPublicId());
+            if (customerProfile != null) {
+                fullName = customerProfile.getFullName();
+            }
+        } catch (Exception ex) {
+            log.warn("Could not retrieve customer profile for fullName: {}", ex.getMessage());
+        }
         return AuthResponse.builder()
                 .accessToken(accessToken)
                 .refreshToken(refreshToken)
                 .tokenType(AuthConstants.TOKEN_TYPE_BEARER)
                 .expiresInSeconds(accessExpirationMs / 1000)
-                .user(userMapper.toSummaryResponse(user))
+                .user(userMapper.toSummaryResponse(
+                        user,
+                        fullName
+                ))
                 .build();
     }
 
@@ -504,10 +516,23 @@ public class AuthServiceImpl implements AuthService {
         AuthUser user = adminAuthRepository.findByEmail(identifier)
                 .map(AdminAuth::getAuthUser)
                 .or(() -> customerAuthRepository.findByMobileNumber(normalizeMobile(identifier)).map(CustomerAuth::getUser))
+                .or(() -> customerAuthRepository.findByEmail(identifier.trim().toLowerCase()).map(CustomerAuth::getUser))
                 .or(() -> authUserRepository.findByPublicId(identifier))
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with identifier: " + identifier));
 
-        return userMapper.toSummaryResponse(user);
+        String fullName = null;
+        if (user.getRole() == UserRole.CUSTOMER || user.getRole() == UserRole.USER) {
+            try {
+                CustomerProfileDto customerProfile = customerServiceClient.getCustomerProfile(user.getPublicId());
+                if (customerProfile != null) {
+                    fullName = customerProfile.getFullName();
+                }
+            } catch (Exception ex) {
+                log.warn("Could not retrieve customer profile for fullName: {}", ex.getMessage());
+            }
+        }
+
+        return userMapper.toSummaryResponse(user, fullName);
     }
 
     @Override

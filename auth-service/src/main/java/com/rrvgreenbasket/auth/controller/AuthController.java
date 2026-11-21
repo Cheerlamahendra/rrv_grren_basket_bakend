@@ -111,20 +111,20 @@ public class AuthController {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Invalid or expired OTP code"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "No customer found with provided identifier")
     })
-    @PostMapping("/customer/login")
-    public ResponseEntity<ApiResponse<AuthResponse>> loginCustomer(@Valid @RequestBody CustomerLoginRequest request, HttpServletRequest httpRequest) {
-        String clientIp = getClientIp(httpRequest);
-        log.info("REST request for customer login with destination: {}", request.resolveDestination());
-        AuthResponse response = authService.loginCustomer(request, clientIp);
-        return ResponseEntity.ok(ApiResponse.success("Customer login successful", response));
-    }
-
-    @Operation(summary = "Admin Login", description = "Authenticates platform administrators using email and BCrypt password.")
-    @ApiResponses(value = {
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Admin authenticated successfully"),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Invalid admin credentials"),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "423", description = "Admin account is temporarily locked")
-    })
+//    @PostMapping("/customer/login")
+//    public ResponseEntity<ApiResponse<AuthResponse>> loginCustomer(@Valid @RequestBody CustomerLoginRequest request, HttpServletRequest httpRequest) {
+//        String clientIp = getClientIp(httpRequest);
+//        log.info("REST request for customer login with destination: {}", request.resolveDestination());
+//        AuthResponse response = authService.loginCustomer(request, clientIp);
+//        return ResponseEntity.ok(ApiResponse.success("Customer login successful", response));
+//    }
+//
+//    @Operation(summary = "Admin Login", description = "Authenticates platform administrators using email and BCrypt password.")
+//    @ApiResponses(value = {
+//            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Admin authenticated successfully"),
+//            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Invalid admin credentials"),
+//            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "423", description = "Admin account is temporarily locked")
+//    })
     @PostMapping("/admin/login")
     public ResponseEntity<ApiResponse<AuthResponse>> loginAdmin(@Valid @RequestBody AdminLoginRequest request, HttpServletRequest httpRequest) {
         String clientIp = getClientIp(httpRequest);

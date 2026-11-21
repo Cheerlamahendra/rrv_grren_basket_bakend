@@ -22,7 +22,7 @@ class SignatureVerificationTests {
 
     private final String testKeySecret = "test_rzp_secret_key_12345";
     private final String testWebhookSecret = "test_rzp_webhook_secret_67890";
-    private final String internalSecret = "c8f7e2d1a5b49382716054321fedcba9876543210abcdef0123456789abcdef0";
+    private final String internalSecret = "RQpmB5hGO2NsLNE7OnwXo5NfNtEJj+j+461g0oEeGunJPZ4iYQEGr+uk5M3hAfgDg26IDtmA9N2RJbFXkCLrqQ==";
 
     @BeforeEach
     void setUp() {

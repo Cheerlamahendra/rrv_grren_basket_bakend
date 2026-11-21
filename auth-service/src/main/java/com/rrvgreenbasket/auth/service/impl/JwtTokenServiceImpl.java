@@ -1,7 +1,9 @@
 package com.rrvgreenbasket.auth.service.impl;
 
+import com.rrvgreenbasket.auth.client.CustomerServiceClient;
 import com.rrvgreenbasket.auth.constants.AuthConstants;
 import com.rrvgreenbasket.auth.dto.response.AuthResponse;
+import com.rrvgreenbasket.auth.dto.response.CustomerProfileDto;
 import com.rrvgreenbasket.auth.dto.response.SessionValidationResponse;
 import com.rrvgreenbasket.auth.entity.AuthUser;
 import com.rrvgreenbasket.auth.entity.RefreshToken;
@@ -51,6 +53,7 @@ public class JwtTokenServiceImpl implements JwtTokenService {
     private final UserMapper userMapper;
     private final AuthAuditService auditService;
     private final SessionService sessionService;
+    private final CustomerServiceClient customerServiceClient;
 
     public JwtTokenServiceImpl(
             @Value("${app.jwt.secret}") String secret,
@@ -60,7 +63,8 @@ public class JwtTokenServiceImpl implements JwtTokenService {
             RefreshTokenRepository refreshTokenRepository,
             UserMapper userMapper,
             AuthAuditService auditService,
-            @Lazy SessionService sessionService) {
+            @Lazy SessionService sessionService,
+            @Lazy CustomerServiceClient customerServiceClient) {
         this.secret = secret;
         this.accessExpirationMs = accessExpirationMs;
         this.refreshExpirationMs = refreshExpirationMs;
@@ -69,6 +73,7 @@ public class JwtTokenServiceImpl implements JwtTokenService {
         this.userMapper = userMapper;
         this.auditService = auditService;
         this.sessionService = sessionService;
+        this.customerServiceClient = customerServiceClient;
     }
 
     private SecretKey getSigningKey() {
@@ -220,12 +225,24 @@ public class JwtTokenServiceImpl implements JwtTokenService {
 
         auditService.logEvent(user, "TOKEN_ROTATED", true, null, "Refresh token rotated successfully for family: " + existing.getTokenFamilyId());
 
+        String fullName = null;
+        if (user.getRole() == UserRole.CUSTOMER || user.getRole() == UserRole.USER) {
+            try {
+                CustomerProfileDto customerProfile = customerServiceClient.getCustomerProfile(user.getPublicId());
+                if (customerProfile != null) {
+                    fullName = customerProfile.getFullName();
+                }
+            } catch (Exception ex) {
+                log.debug("Could not retrieve customer profile for fullName during token refresh: {}", ex.getMessage());
+            }
+        }
+
         return AuthResponse.builder()
                 .accessToken(newAccessToken)
                 .refreshToken(newRawRefreshToken)
                 .tokenType(AuthConstants.TOKEN_TYPE_BEARER)
                 .expiresInSeconds(accessExpirationMs / 1000)
-                .user(userMapper.toSummaryResponse(user))
+                .user(userMapper.toSummaryResponse(user, fullName))
                 .build();
     }
 
@@ -344,4 +361,5 @@ public class JwtTokenServiceImpl implements JwtTokenService {
             throw new IllegalStateException("SHA-256 algorithm unavailable", e);
         }
     }
+
 }

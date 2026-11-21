@@ -84,8 +84,21 @@ public class AdminOrderController {
         String adminUser = (principal != null) ? principal.getUsername() : "ADMIN";
         log.info("Admin '{}' updating status of order '{}' to: {}", adminUser, orderPublicId, request.getStatus());
         OrderResponse response = orderService.updateOrderStatus(
-                orderPublicId, request.getStatus(), request.getReason(), adminUser
+                orderPublicId, request.getStatus(), request.getEffectiveReason(), adminUser
         );
         return ResponseEntity.ok(ApiResponse.success("Order status updated successfully", response));
+    }
+
+    @DeleteMapping("/{orderPublicId}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
+    @Operation(summary = "Permanently delete a cancelled order")
+    public ResponseEntity<ApiResponse<Void>> deleteCancelledOrder(
+            @PathVariable String orderPublicId,
+            @AuthenticationPrincipal UserPrincipal principal
+    ) {
+        String adminUser = (principal != null) ? principal.getUsername() : "ADMIN";
+        log.info("Admin '{}' permanently deleting cancelled order '{}'", adminUser, orderPublicId);
+        orderService.deleteCancelledOrder(orderPublicId, adminUser);
+        return ResponseEntity.ok(ApiResponse.success("Cancelled order permanently deleted successfully", null));
     }
 }
